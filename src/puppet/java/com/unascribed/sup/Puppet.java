@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
@@ -94,6 +95,12 @@ public class Puppet {
 	
 	
 	public static void main(String[] args) {
+		if (GraphicsEnvironment.isHeadless()) {
+			log("ERROR", "AWT is headless");
+			System.exit(1);
+			return;
+		}
+		
 		SwingHelper.fixSwing();
 		
 		MetalLookAndFeel.setCurrentTheme(new OceanTheme());

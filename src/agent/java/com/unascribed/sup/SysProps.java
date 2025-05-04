@@ -14,6 +14,10 @@ public class SysProps {
 	 * Assume yes to all overwrite/reconciliation queries.
 	 */
 	public static final boolean DISABLE_RECONCILIATION = Boolean.getBoolean("unsup.disableReconciliation");
+	/**
+	 * The number of downloads to perform in parallel.
+	 */
+	public static final int DOWNLOAD_WORKERS = Integer.getInteger("unsup.downloadWorkers", 6);
 	
 	
 	/**
