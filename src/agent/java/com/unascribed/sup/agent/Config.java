@@ -19,10 +19,15 @@
 
 package com.unascribed.sup.agent;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,10 +39,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-
 import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.auth.Authorizer;
 import com.unascribed.sup.agent.auth.Authorizer.AuthorizerSpec;
+import com.unascribed.sup.agent.pieces.DNSOverHTTPSSelector;
 import com.unascribed.sup.agent.pieces.QDIni;
 import com.unascribed.sup.agent.signing.SigProvider;
 import com.unascribed.sup.data.ColorChoice;
@@ -48,11 +53,6 @@ import com.unascribed.sup.data.SysProps.PuppetMode;
 import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Strings;
-
-import okhttp3.Dns;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.dnsoverhttps.DnsOverHttps;
 
 /**
  * An immutable snapshot of an "effective configuration", pulled from the config file (unsup.ini),
@@ -67,7 +67,7 @@ public record Config(
 		boolean updateMMCPack, boolean noGui,
 		String initialSubtitle,
 		List<AuthorizerSpec> authorizers,
-		Function<OkHttpClient, Dns> dnsBuilder,
+		Function<HttpClient.Builder, ProxySelector> dnsBuilder,
 		Map<String, String> defaultFlavors,
 		SigProvider packSig, SigProvider altPackSig,
 		Multimap<String, String> mmcComponentMap,
@@ -78,7 +78,7 @@ public record Config(
 		PuppetMode puppetMode, String lang
 	) {
 	
-	public Dns dns(OkHttpClient client) {
+	public ProxySelector dns(HttpClient.Builder client) {
 		return dnsBuilder.apply(client);
 	}
 	
@@ -103,7 +103,7 @@ public record Config(
 		PuppetMode puppetMode = SysProps.PUPPET_MODE.orElse(config.getEnum("puppet_mode", PuppetMode.class, PuppetMode.AUTO));
 		SigProvider packSig = parsePackSig(config, "public_key");
 		SigProvider altPackSig = parsePackSig(config, "alt_public_key");
-		Function<OkHttpClient, Dns> dnsBuilder = parseDns(config.get("dns", "system"))
+		Function<HttpClient.Builder, ProxySelector> dnsBuilder = parseDns(config.get("dns", "system"))
 			.orElseGet(() -> {
 				Log.error("Config file error: dns is not valid at "+config.getBlame("dns")+" - expected 'system', 'quad9', or an HTTPS URL, but got '"+config.get("dns")+"'! Exiting.");
 				throw Agent.exit(Agent.EXIT_CONFIG_ERROR);
@@ -225,11 +225,21 @@ public record Config(
 				flavorDialogGeom, flavorDialogBias, puppetMode, lang);
 	}
 
-	private static Optional<Function<OkHttpClient, Dns>> parseDns(String v) {
+	private static Optional<Function<HttpClient.Builder, ProxySelector>> parseDns(String v) {
 		switch (v) {
 			case "system" -> {
 				Log.debug("Using system DNS for DNS queries");
-				return Optional.of(client -> Dns.SYSTEM);
+				return Optional.of(client -> new ProxySelector() {
+					@Override
+					public List<Proxy> select(URI uri) {
+						return List.of(Proxy.NO_PROXY);
+					}
+					
+					@Override
+					public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+						// no-op
+					}
+				});
 			}
 			case "quad9" -> {
 				List<InetAddress> quad9Hosts;
@@ -245,19 +255,12 @@ public record Config(
 					throw new AssertionError(e);
 				}
 				Log.debug("Using Quad9 for DNS queries");
-				return Optional.of(client -> new DnsOverHttps.Builder()
-						.url(HttpUrl.get("https://dns10.quad9.net/dns-query"))
-						.bootstrapDnsHosts(quad9Hosts)
-						.client(client)
-						.build());
+				return Optional.of(client -> new DNSOverHTTPSSelector(client, quad9Hosts, URI.create("https://dns10.quad9.net/dns-query")));
 			}
 			default -> {
 				if (v.startsWith("https://")) {
 					Log.debug("Using "+v+" for DNS queries");
-					return Optional.of(client -> new DnsOverHttps.Builder()
-							.url(HttpUrl.get(v))
-							.client(client)
-							.build());
+					return Optional.of(client -> new DNSOverHTTPSSelector(client, null, URI.create(v)));
 				} else {
 					return Optional.empty();
 				}

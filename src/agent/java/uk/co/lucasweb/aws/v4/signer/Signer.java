@@ -19,8 +19,7 @@ import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.util.Bases;
 
-import okhttp3.Request;
-
+import java.net.http.HttpRequest;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -143,7 +142,7 @@ public class Signer {
 			return this;
 		}
 
-		public Signer build(Request request, String service, String contentSha256) {
+		public Signer build(HttpRequest request, String service, String contentSha256) {
 			CanonicalHeaders canonicalHeaders = getCanonicalHeaders();
 			String date = canonicalHeaders.getFirstValue(X_AMZ_DATE)
 					.orElseThrow(() -> new RuntimeException("headers missing '" + X_AMZ_DATE + "' header"));

@@ -26,15 +26,32 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
 import java.nio.file.Files;
-import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.PKIXParameters;
+import java.security.cert.TrustAnchor;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.net.ssl.CertPathTrustManagerParameters;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParser;
@@ -42,7 +59,8 @@ import com.grack.nanojson.JsonWriter;
 import com.unascribed.sup.Unsup;
 import com.unascribed.sup.agent.PuppetHandler.AlertOption;
 import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
-import com.unascribed.sup.agent.pieces.MemoryCookieJar;
+import com.unascribed.sup.agent.pieces.HttpClientWrapper;
+import com.unascribed.sup.agent.pieces.MergedTrustManager;
 import com.unascribed.sup.agent.pieces.QDIni;
 import com.unascribed.sup.agent.pieces.QDIni.QDIniException;
 import com.unascribed.sup.agent.pieces.pseudolocale.AccentedEnglish;
@@ -55,12 +73,6 @@ import com.unascribed.sup.data.AlertMessageType;
 import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.pieces.ExceptableRunnable;
 import com.unascribed.sup.util.Resources;
-
-import okhttp3.Dns;
-import okhttp3.OkHttpClient;
-import okhttp3.brotli.BrotliInterceptor;
-import okhttp3.internal.concurrent.TaskRunner;
-import okhttp3.tls.HandshakeCertificates;
 
 public class Agent {
 
@@ -95,7 +107,10 @@ public class Agent {
 	/** this mutex must be held while doing sensitive operations that shouldn't be interrupted */
 	static final Object dangerMutex = new Object();
 	
-	private static OkHttpClient okhttp;
+	private static HttpClientWrapper okhttp;
+	
+	private static final AtomicInteger threadId = new AtomicInteger(1);
+	private static final ExecutorService httpPool = Executors.newCachedThreadPool(r -> new Thread(r, "unsup http #"+threadId.getAndIncrement()));
 
 	public static void main(String[] args) {
 		standalone = true;
@@ -129,7 +144,7 @@ public class Agent {
 					}
 				})) {
 					Log.info("Reinitializing with newly updated config");
-					destroyOkHttp(false);
+					destroyOkHttp();
 					if (!preinit(arg)) return;
 				} else {
 					Log.info("No config update. Proceeding as normal.");
@@ -300,7 +315,7 @@ public class Agent {
 					var data = RequestHelper.loadAndVerify(new URI(SysProps.BOOTSTRAP_URL.get()), 16*M, new URI(SysProps.BOOTSTRAP_URL+".sig"), key.orElse(null));
 					Files.write(configFile.toPath(), data);
 					Log.info("Successfully downloaded bootstrap config");
-					destroyOkHttp(false);
+					destroyOkHttp();
 					return loadConfig(lang);
 				} catch (Exception e) {
 					Log.error("Failed to download bootstrap config", e);
@@ -329,49 +344,54 @@ public class Agent {
 		}
 	}
 	
-	private static void setupOkHttp() throws AssertionError {
-		HandshakeCertificates.Builder certsBldr = new HandshakeCertificates.Builder()
-				.addPlatformTrustedCertificates();
-		for (X509Certificate cert : CACerts.certs) {
-			certsBldr.addTrustedCertificate(cert);
+	private static void setupOkHttp() {
+		try {
+			var ctx = SSLContext.getDefault();
+			// everything about this sucks.
+			var defaultTmf = TrustManagerFactory.getInstance("PKIX");
+			defaultTmf.init((KeyStore)null);
+			var defaultX509 = findX509(defaultTmf);
+			
+			var ourTm = TrustManagerFactory.getInstance("PKIX");
+			ourTm.init(new CertPathTrustManagerParameters(new PKIXParameters(CACerts.certs.stream()
+					.map(cert -> new TrustAnchor(cert, null))
+					.collect(Collectors.toSet()))));
+			var ourX509 = findX509(ourTm);
+			
+			var merged = MergedTrustManager.of(defaultX509, ourX509);
+			SecureRandom sr;
+			try {
+				sr = SecureRandom.getInstance("NativePRNGNonBlocking");
+			} catch (NoSuchAlgorithmException e) {
+				sr = new SecureRandom();
+			}
+			ctx.init(null, new TrustManager[] { merged }, sr);
+			var bootstrap = HttpClient.newBuilder()
+					.sslContext(ctx)
+					.connectTimeout(Duration.ofSeconds(30))
+					.executor(httpPool);
+			okhttp = new HttpClientWrapper(HttpClient.newBuilder()
+					.proxy(config() == null ? HttpClient.Builder.NO_PROXY : config().dns(bootstrap))
+					.sslContext(ctx)
+					.connectTimeout(Duration.ofSeconds(30))
+					.executor(httpPool)
+					.build());
+		} catch (GeneralSecurityException e) {
+			throw new AssertionError(e);
 		}
-		HandshakeCertificates certs = certsBldr.build();
-		OkHttpClient bootstrapOkHttp = new OkHttpClient.Builder()
-			.connectTimeout(30, TimeUnit.SECONDS)
-			.readTimeout(15, TimeUnit.SECONDS)
-			.writeTimeout(15, TimeUnit.SECONDS)
-			.sslSocketFactory(certs.sslSocketFactory(), certs.trustManager())
-			.addInterceptor(chain -> {
-				String url = chain.request().url().toString();
-				var req = chain.request();
-				for (var en : config().authorizers()) {
-					if (url.startsWith(en.urlPrefix())) {
-						var bldr = req.newBuilder();
-						en.auth().authorize(req, bldr);
-						req = bldr.build();
-					}
-				}
-				return chain.proceed(req);
-			})
-			.addInterceptor(BrotliInterceptor.INSTANCE)
-			.build();
-		okhttp = bootstrapOkHttp.newBuilder()
-				.cookieJar(new MemoryCookieJar())
-				.dns(config() == null ? Dns.SYSTEM : config().dns(bootstrapOkHttp))
-				.build();
 	}
 	
-	private static void destroyOkHttp(boolean wait) {
-		if (okhttp() != null) {
-			okhttp().dispatcher().executorService().shutdown();
-			okhttp().connectionPool().evictAll();
-			if (wait) {
-				try {
-					okhttp().dispatcher().executorService().awaitTermination(500, TimeUnit.MILLISECONDS);
-				} catch (InterruptedException e) {}
+	private static X509TrustManager findX509(TrustManagerFactory tmf) {
+		for (var mgr : tmf.getTrustManagers()) {
+			if (mgr instanceof X509TrustManager xtm) {
+				return xtm;
 			}
-			okhttp = null;
 		}
+		throw new AssertionError("No X509TrustManager");
+	}
+
+	private static void destroyOkHttp() {
+		okhttp = null;
 	}
 	
 	private static QDIni mergePreset(QDIni config, String presetName, boolean mustExist) {
@@ -403,18 +423,9 @@ public class Agent {
 				er.run();
 			} catch (Throwable t) {}
 		}
-		destroyOkHttp(true);
-		var tarray = new Thread[16];
-		Thread.enumerate(tarray);
-		for (var t : tarray) {
-			if (t != null && ("OkHttp TaskRunner".equals(t.getName()) || "com.unascribed.sup.lib.okhttp3.OkHttp TaskRunner".equals(t.getName()))) {
-				// silence meaningless errors due to OkHttp not being designed for its background trash to ever be thrown away
-				t.setUncaughtExceptionHandler((x, e) -> {});
-			}
-		}
-		// not in destroyOkHttp as this is not reversible
-		TaskRunner.INSTANCE.cancelAll();
-		((TaskRunner.RealBackend)TaskRunner.INSTANCE.getBackend()).shutdown();
+		destroyOkHttp();
+		// not in destroyHttp as this is not reversible
+		httpPool.shutdown();
 		if (Bootstrapper.universe != null) Bootstrapper.universe.forget();
 		cleanup = null;
 	}
@@ -466,7 +477,7 @@ public class Agent {
 		return config;
 	}
 
-	public static OkHttpClient okhttp() {
+	public static HttpClientWrapper okhttp() {
 		return okhttp;
 	}
 	

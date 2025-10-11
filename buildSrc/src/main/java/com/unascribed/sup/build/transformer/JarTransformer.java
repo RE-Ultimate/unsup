@@ -40,7 +40,6 @@ public class JarTransformer {
 		Path zip = zipFile.toPath();
 		
 		List<ClassTransformer> trans = new ArrayList<>();
-		trans.add(new PublicSuffixDatabaseTransformer());
 		trans.add(new ContainerTableTransformer());
 		trans.add(new TomlTransformer());
 		trans.add(new JsonWriterBaseTransformer());

@@ -35,6 +35,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
+import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -65,10 +66,6 @@ import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.pieces.NullOutputStream;
 import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.SuppressFBWarnings;
-
-import okhttp3.HttpUrl;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class RequestHelper {
 	
@@ -207,14 +204,13 @@ public class RequestHelper {
 		final boolean fhostile = hostile;
 		return RequestHelper.withRetries(10, () -> {
 			try {
-				Request.Builder reqbldr = new Request.Builder()
-						.url(HttpUrl.get(url))
+				var reqbldr = HttpRequest.newBuilder(url)
 						.header("User-Agent",
 								fhostile ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:"+currentFirefoxVersion+") Gecko/20100101 Firefox/"+currentFirefoxVersion
 								         : "unsup/"+Util.VERSION+" (+https://git.sleeping.town/unascribed/unsup)"
 							);
 				if (startAt != 0) {
-					reqbldr.addHeader("Range", "bytes="+startAt+"-");
+					reqbldr.header("Range", "bytes="+startAt+"-");
 				}
 				if (fhostile) {
 					reqbldr.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -227,17 +223,18 @@ public class RequestHelper {
 					reqbldr.header("Priority", "u=0, i");
 					reqbldr.header("TE", "trailers");
 				}
-				Response res = Agent.okhttp().newCall(reqbldr.build()).execute();
-				if (res.code() != (startAt == 0 ? 200 : 206)) {
-					if (res.code() == 429) {
+				var res = Agent.okhttp().send(reqbldr.build());
+				int code = res.statusCode();
+				if (code != (startAt == 0 ? 200 : 206)) {
+					if (code == 429) {
 						int delay = 0;
-						String val = res.header("Retry-After");
-						if (val != null) {
+						var val = res.headers().firstValue("Retry-After");
+						if (val.isPresent()) {
 							try {
-								delay = Integer.parseInt(val);
+								delay = Integer.parseInt(val.get());
 							} catch (NumberFormatException e) {
 								try {
-									var zdt = ZonedDateTime.parse(val, DateTimeFormatter.RFC_1123_DATE_TIME);
+									var zdt = ZonedDateTime.parse(val.get(), DateTimeFormatter.RFC_1123_DATE_TIME);
 									long l = Instant.now().until(zdt, ChronoUnit.SECONDS);
 									if (l < 0) l = 0;
 									if (l >= Integer.MAX_VALUE) l = Integer.MAX_VALUE;
@@ -251,24 +248,26 @@ public class RequestHelper {
 								new IOException(url.getHost()+" asked us to back off, but we're out of retries"))
 							.definedDelay(delay);
 					}
-					if (res.code() == 404 || res.code() == 410) throw new FileNotFoundException(url.toString());
-					byte[] b = RequestHelper.collectLimited(res.body().byteStream(), 512);
-					String s = b == null ? "(response too long)" : new String(b, StandardCharsets.UTF_8);
-					res.close();
-					if (res.code()/100 == 500) {
-						throw new Retry(url.getHost()+" responded with a server error for "+url+" ("+res.code()+")",
-								new IOException("Received non-200 response from server for "+url+": "+res.code()+"\n"+s));
+					if (code == 404 || code == 410) throw new FileNotFoundException(url.toString());
+					String s;
+					try (var in = res.body()) {
+						byte[] b = RequestHelper.collectLimited(in, 512);
+						s = b == null ? "(response too long)" : new String(b, StandardCharsets.UTF_8);
+					}
+					if (res.statusCode()/100 == 500) {
+						throw new Retry(url.getHost()+" responded with a server error for "+url+" ("+res.statusCode()+")",
+								new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s));
 					} else {
-						throw new IOException("Received non-200 response from server for "+url+": "+res.code()+"\n"+s);
+						throw new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s);
 					}
 				}
-				long len = res.body().contentLength();
-				boolean supportsRange = "identity".equals(res.header("Content-Encoding", "identity"))
-						&& "bytes".equals(res.header("Accept-Ranges"));
-				if (len == -1) {
-					return new ResourceRef(res.body().byteStream(), supportsRange);
+				var len = res.headers().firstValueAsLong("Content-Length");
+				boolean supportsRange = "identity".equals(res.headers().firstValue("Content-Encoding").orElse("identity"))
+						&& "bytes".equals(res.headers().firstValue("Accept-Ranges").orElse(null));
+				if (len.isPresent()) {
+					return new ResourceRef(res.body(), len.getAsLong(), supportsRange);
 				} else {
-					return new ResourceRef(res.body().byteStream(), len, supportsRange);
+					return new ResourceRef(res.body(), supportsRange);
 				}
 			} catch (InterruptedIOException e) {
 				throw new Retry("Connection to "+url.getHost()+" timed out",
