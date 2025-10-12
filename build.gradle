@@ -362,9 +362,8 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	applymapping 'build/tmp/proguard.map'
 	
 	keep 'class com.unascribed.sup.agent.Bootstrap { *; }'
-	keep 'class com.unascribed.sup.agent.Agent { *; }'
+	keep 'class com.unascribed.sup.agent.Agent { public static void main(java.lang.String[]); public static void premain(java.lang.String); }'
 	keep 'class com.unascribed.sup.puppet.Bootstrap { *; }'
-	keep 'class com.unascribed.sup.puppet.Puppet { *; }'
 	keep 'class com.unascribed.sup.LibBootstrap* { *; }'
 	keep 'class com.unascribed.sup.Unsup { *; }'
 	
@@ -383,6 +382,10 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	
 	dontnote
 	
+	optimizations '*'
+	optimizationpasses 8
+	configuration.optimizeConservatively = false
+	
 	keepattributes '*'
 	
 	verbose
@@ -395,11 +398,11 @@ task dataJar(type: Jar) {
 	archiveFileName = 'data.jar'
 	destinationDirectory.set(file('build/tmp'))
 	
-	exclude 'com/unascribed/sup/lib/okhttp3/internal/platform/android/**'
-	exclude 'com/unascribed/sup/lib/okhttp3/internal/platform/Android*'
 	exclude 'com/unascribed/sup/lib/brotli/**'
 	exclude 'com/unascribed/sup/assets/fonts/locale/**'
 	exclude 'com/unascribed/sup/Unsup.class'
+	exclude 'com/unascribed/sup/bootstrap/**'
+	exclude 'com/unascribed/sup/*/Bootstrap.class'
 	
 	exclude '**/*.kotlin_metadata'
 	exclude '**/*.kotlin_builtins'
