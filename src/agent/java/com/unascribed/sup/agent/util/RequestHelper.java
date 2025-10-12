@@ -52,7 +52,6 @@ import java.util.function.Function;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
-import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParser;
 import com.grack.nanojson.JsonParserException;
@@ -151,7 +150,6 @@ public class RequestHelper {
 	private static String currentFirefoxVersion;
 	private static final Set<String> alwaysHostile = new HashSet<>(Arrays.asList(Bases.b64ToString("YmV0YS5jdXJzZWZvcmdlLmNvbXx3d3cuY3Vyc2Vmb3JnZS5jb218Y3Vyc2Vmb3JnZS5jb218bWluZWNyYWZ0LmN1cnNlZm9yZ2UuY29tfG1lZGlhZmlsZXouZm9yZ2VjZG4ubmV0fG1lZGlhZmlsZXMuZm9yZ2VjZG4ubmV0fGZvcmdlY2RuLm5ldHxlZGdlLmZvcmdlY2RuLm5ldHxzdGF0aWMucGxhbmV0bWluZWNyYWZ0LmNvbQ==").split("\\|")));
 
-	@Desugar
 	public record ResourceRef(InputStream stream, OptionalLong size, boolean supportsRange) implements Closeable {
 		
 		public ResourceRef(InputStream stream, boolean supportsRange) { this(stream, OptionalLong.empty(), supportsRange); }
@@ -223,7 +221,7 @@ public class RequestHelper {
 					reqbldr.header("Priority", "u=0, i");
 					reqbldr.header("TE", "trailers");
 				}
-				var res = Agent.okhttp().send(reqbldr.build());
+				var res = Agent.http().send(reqbldr);
 				int code = res.statusCode();
 				if (code != (startAt == 0 ? 200 : 206)) {
 					if (code == 429) {
@@ -421,7 +419,6 @@ public class RequestHelper {
 	/**
 	 * @param hash null if no hash function was specified
 	 */
-	@Desugar
 	public record DownloadedFile(String hash, File file) {}
 	
 	public static DownloadedFile downloadToFile(URI url, File dir, long size, Progressor progressCb, HashFunction hashFunc, boolean hostile) throws IOException {

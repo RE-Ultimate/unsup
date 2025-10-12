@@ -27,17 +27,17 @@ public class HttpClientWrapper {
 		this.delegate = delegate;
 	}
 	
-	public CompletableFuture<HttpResponse<InputStream>> sendAsync(HttpRequest req)  {
+	public CompletableFuture<HttpResponse<InputStream>> sendAsync(HttpRequest.Builder req)  {
 		return delegate.sendAsync(modifyRequest(req), BodyHandlers.ofInputStream())
 				.thenApply(this::wrapResponse);
 	}
 	
-	public HttpResponse<InputStream> send(HttpRequest req) throws IOException, InterruptedException {
+	public HttpResponse<InputStream> send(HttpRequest.Builder req) throws IOException, InterruptedException {
 		return wrapResponse(delegate.send(modifyRequest(req), BodyHandlers.ofInputStream()));
 	}
 	
-	private HttpRequest modifyRequest(HttpRequest req) {
-		var bldr = HttpRequest.newBuilder(req, (k, v) -> true);
+	private HttpRequest modifyRequest(HttpRequest.Builder bldr) {
+		var req = bldr.build();
 		if (!req.headers().firstValue("Accept-Encoding").filter(s -> s.contains("br")).isPresent()) {
 			bldr.header("Accept-Encoding", "gzip, deflate, br");
 		}
@@ -75,7 +75,7 @@ public class HttpClientWrapper {
 
 			@Override
 			public InputStream body() {
-				if ("br".equals(headers().firstValue("Content-Encoding").get())) {
+				if ("br".equals(headers().firstValue("Content-Encoding").orElse(null))) {
 					try {
 						return new BrotliInputStream(res.body());
 					} catch (IOException e) {

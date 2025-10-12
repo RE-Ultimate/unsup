@@ -22,8 +22,6 @@ package com.unascribed.sup.agent.auth;
 import java.net.http.HttpRequest;
 import java.util.Optional;
 
-import com.github.bsideup.jabel.Desugar;
-
 public interface Authorizer {
 
 	void authorize(HttpRequest orig, HttpRequest.Builder req);
@@ -54,7 +52,6 @@ public interface Authorizer {
 		return parse(v).map(a -> new AuthorizerSpec(prefix, a));
 	}
 	
-	@Desugar
 	public record AuthorizerSpec(String urlPrefix, Authorizer auth) {}
 	
 }

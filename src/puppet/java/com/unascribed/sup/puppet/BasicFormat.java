@@ -24,14 +24,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.github.bsideup.jabel.Desugar;
 
 public final class BasicFormat {
 	private static final Pattern PLACEHOLDER = Pattern.compile("%(?:([0-9+])\\$)?(.)");
 	
 	private interface Segment { void append(StringBuilder sb, Object[] args); }
 
-	@Desugar
 	private record LiteralSegment(String str) implements Segment {
 
 		@Override

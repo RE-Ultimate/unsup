@@ -19,9 +19,7 @@
 
 package com.unascribed.sup.data;
 
-import com.github.bsideup.jabel.Desugar;
 
-@Desugar
 public record FlavorChoice(
 	String id,
 	String name,

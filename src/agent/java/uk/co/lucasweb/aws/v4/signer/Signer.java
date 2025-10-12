@@ -15,7 +15,6 @@ package uk.co.lucasweb.aws.v4.signer;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.util.Bases;
 
@@ -160,6 +159,5 @@ public class Signer {
 
 	}
 	
-	@Desugar
 	public record AwsCredentials(String accessKey, String secretKey) {}
 }

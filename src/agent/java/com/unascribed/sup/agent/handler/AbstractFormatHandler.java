@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import com.unascribed.sup.agent.Agent;
@@ -49,7 +48,6 @@ public abstract class AbstractFormatHandler {
 		public boolean skip = false;
 	}
 
-	@Desugar
 	public record FileState(HashFunction func, String hash, long size) {
 		public static final FileState EMPTY = new FileState(null, null, 0);
 

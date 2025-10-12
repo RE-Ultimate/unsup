@@ -19,17 +19,9 @@
 
 package com.unascribed.sup.agent;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Proxy;
-import java.net.ProxySelector;
-import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -38,11 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
-import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.auth.Authorizer;
 import com.unascribed.sup.agent.auth.Authorizer.AuthorizerSpec;
-import com.unascribed.sup.agent.pieces.DNSOverHTTPSSelector;
 import com.unascribed.sup.agent.pieces.QDIni;
 import com.unascribed.sup.agent.signing.SigProvider;
 import com.unascribed.sup.data.ColorChoice;
@@ -58,7 +47,6 @@ import com.unascribed.sup.util.Strings;
  * An immutable snapshot of an "effective configuration", pulled from the config file (unsup.ini),
  * system properties, heuristics, etc.
  */
-@Desugar
 public record Config(
 		boolean enforceSecureHashes,
 		boolean useEnvs, String detectedEnv, Set<String> validEnvs,
@@ -67,7 +55,6 @@ public record Config(
 		boolean updateMMCPack, boolean noGui,
 		String initialSubtitle,
 		List<AuthorizerSpec> authorizers,
-		Function<HttpClient.Builder, ProxySelector> dnsBuilder,
 		Map<String, String> defaultFlavors,
 		SigProvider packSig, SigProvider altPackSig,
 		Multimap<String, String> mmcComponentMap,
@@ -77,10 +64,6 @@ public record Config(
 		Geometry flavorDialogGeom, double flavorDialogBias,
 		PuppetMode puppetMode, String lang
 	) {
-	
-	public ProxySelector dns(HttpClient.Builder client) {
-		return dnsBuilder.apply(client);
-	}
 	
 	public static Config parse(QDIni config, String arg, String lang) {
 		// this is kind of a mess, but it's also very direct.
@@ -103,11 +86,6 @@ public record Config(
 		PuppetMode puppetMode = SysProps.PUPPET_MODE.orElse(config.getEnum("puppet_mode", PuppetMode.class, PuppetMode.AUTO));
 		SigProvider packSig = parsePackSig(config, "public_key");
 		SigProvider altPackSig = parsePackSig(config, "alt_public_key");
-		Function<HttpClient.Builder, ProxySelector> dnsBuilder = parseDns(config.get("dns", "system"))
-			.orElseGet(() -> {
-				Log.error("Config file error: dns is not valid at "+config.getBlame("dns")+" - expected 'system', 'quad9', or an HTTPS URL, but got '"+config.get("dns")+"'! Exiting.");
-				throw Agent.exit(Agent.EXIT_CONFIG_ERROR);
-			});
 		boolean noGui = determineNoGui(config);
 		boolean enforceSecureHashes = config.getBoolean("enforce_secure_hashes", false);
 		SourceFormat format = config.getEnum("source_format", SourceFormat.class, null);
@@ -218,54 +196,11 @@ public record Config(
 		
 		return new Config(enforceSecureHashes, useEnvs, detectedEnv, validEnvs, behavior,
 				offerChangeFlavors, format, source, serverAuthority, updateMMCPack, noGui,
-				initialSubtitle, Collections.unmodifiableList(authorizers), dnsBuilder,
+				initialSubtitle, Collections.unmodifiableList(authorizers),
 				Collections.unmodifiableMap(defaultFlavors), packSig, altPackSig,
 				mmcComponentMap.unmodifiable(), Collections.unmodifiableMap(colorChoices),
 				Collections.unmodifiableMap(strings), modpackName, brandingIcon,
 				flavorDialogGeom, flavorDialogBias, puppetMode, lang);
-	}
-
-	private static Optional<Function<HttpClient.Builder, ProxySelector>> parseDns(String v) {
-		switch (v) {
-			case "system" -> {
-				Log.debug("Using system DNS for DNS queries");
-				return Optional.of(client -> new ProxySelector() {
-					@Override
-					public List<Proxy> select(URI uri) {
-						return List.of(Proxy.NO_PROXY);
-					}
-					
-					@Override
-					public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
-						// no-op
-					}
-				});
-			}
-			case "quad9" -> {
-				List<InetAddress> quad9Hosts;
-				try {
-					quad9Hosts = Arrays.asList(
-						InetAddress.getByName("9.9.9.10"),
-						InetAddress.getByName("2620:fe::10"),
-						InetAddress.getByName("149.112.112.10"),
-						InetAddress.getByName("2620:fe::fe:10")
-					);
-				} catch (UnknownHostException e) {
-					// not a possible throw for a well-formed IP string
-					throw new AssertionError(e);
-				}
-				Log.debug("Using Quad9 for DNS queries");
-				return Optional.of(client -> new DNSOverHTTPSSelector(client, quad9Hosts, URI.create("https://dns10.quad9.net/dns-query")));
-			}
-			default -> {
-				if (v.startsWith("https://")) {
-					Log.debug("Using "+v+" for DNS queries");
-					return Optional.of(client -> new DNSOverHTTPSSelector(client, null, URI.create(v)));
-				} else {
-					return Optional.empty();
-				}
-			}
-		}
 	}
 
 	private static SigProvider parsePackSig(QDIni config, String key) {
@@ -294,7 +229,6 @@ public record Config(
 		return false;
 	}
 
-	@Desugar
 	public record Geometry(int width, int height) {
 		
 		public static Geometry parse(String s) {

@@ -27,12 +27,13 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
+import java.net.http.HttpClient.Redirect;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.cert.PKIXParameters;
+import java.security.cert.PKIXBuilderParameters;
 import java.security.cert.TrustAnchor;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -242,7 +243,7 @@ public class Agent {
 		}
 		config = Config.parse(ini, arg, lang);
 		
-		setupOkHttp();
+		setupHttp();
 		
 		stateFile = new File(".unsup-state.json");
 		if (stateFile.exists()) {
@@ -309,7 +310,7 @@ public class Agent {
 					Log.error("Failed to parse bootstrap key", e);
 					throw exit(EXIT_CONFIG_ERROR);
 				}));
-				setupOkHttp();
+				setupHttp();
 				int M = 1024*1024;
 				try {
 					var data = RequestHelper.loadAndVerify(new URI(SysProps.BOOTSTRAP_URL.get()), 16*M, new URI(SysProps.BOOTSTRAP_URL+".sig"), key.orElse(null));
@@ -344,18 +345,18 @@ public class Agent {
 		}
 	}
 	
-	private static void setupOkHttp() {
+	private static void setupHttp() {
 		try {
-			var ctx = SSLContext.getDefault();
+			var ctx = SSLContext.getInstance("TLS");
 			// everything about this sucks.
 			var defaultTmf = TrustManagerFactory.getInstance("PKIX");
 			defaultTmf.init((KeyStore)null);
 			var defaultX509 = findX509(defaultTmf);
 			
 			var ourTm = TrustManagerFactory.getInstance("PKIX");
-			ourTm.init(new CertPathTrustManagerParameters(new PKIXParameters(CACerts.certs.stream()
+			ourTm.init(new CertPathTrustManagerParameters(new PKIXBuilderParameters(CACerts.certs.stream()
 					.map(cert -> new TrustAnchor(cert, null))
-					.collect(Collectors.toSet()))));
+					.collect(Collectors.toSet()), null)));
 			var ourX509 = findX509(ourTm);
 			
 			var merged = MergedTrustManager.of(defaultX509, ourX509);
@@ -366,15 +367,11 @@ public class Agent {
 				sr = new SecureRandom();
 			}
 			ctx.init(null, new TrustManager[] { merged }, sr);
-			var bootstrap = HttpClient.newBuilder()
-					.sslContext(ctx)
-					.connectTimeout(Duration.ofSeconds(30))
-					.executor(httpPool);
 			okhttp = new HttpClientWrapper(HttpClient.newBuilder()
-					.proxy(config() == null ? HttpClient.Builder.NO_PROXY : config().dns(bootstrap))
 					.sslContext(ctx)
 					.connectTimeout(Duration.ofSeconds(30))
 					.executor(httpPool)
+					.followRedirects(Redirect.ALWAYS)
 					.build());
 		} catch (GeneralSecurityException e) {
 			throw new AssertionError(e);
@@ -477,7 +474,7 @@ public class Agent {
 		return config;
 	}
 
-	public static HttpClientWrapper okhttp() {
+	public static HttpClientWrapper http() {
 		return okhttp;
 	}
 	

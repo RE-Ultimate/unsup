@@ -12,12 +12,10 @@
  */
 package uk.co.lucasweb.aws.v4.signer;
 
-import com.github.bsideup.jabel.Desugar;
 
 /**
  * An HTTP Header.
  *
  * @author Richard Lucas
  */
-@Desugar
 public record Header(String name, String value) {}

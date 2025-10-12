@@ -35,7 +35,6 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.util.freetype.FT_Bitmap;
 import org.lwjgl.util.freetype.FT_Face;
 
-import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.puppet.FontResources;
@@ -286,7 +285,6 @@ public class FontManager {
 		}
 	}
 
-	@Desugar
 	private record CacheKey(Face face, float size, int codepoint) {}
 	
 	private static class CachedTexture {

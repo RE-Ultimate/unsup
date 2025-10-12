@@ -44,7 +44,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.github.bsideup.jabel.Desugar;
 
 /**
  * A quick-and-dirty INI parser.
@@ -75,7 +74,6 @@ public class QDIni {
 		String transformValue(String key, String value);
 	}
 	
-	@Desugar
 	private record BlameString(String value, String file, int line) {
 		public String blame() {
 			return "line " + line + " in " + file;

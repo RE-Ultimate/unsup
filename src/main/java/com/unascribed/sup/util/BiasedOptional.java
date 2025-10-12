@@ -5,12 +5,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import com.github.bsideup.jabel.Desugar;
 
 /**
  * An Optional with an inherent default value.
  */
-@Desugar
 public record BiasedOptional<T>(Optional<T> unbiased, T bias) {
 	
 	public T orBias() {

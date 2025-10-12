@@ -21,10 +21,8 @@ package com.unascribed.sup.data;
 
 import java.util.List;
 
-import com.github.bsideup.jabel.Desugar;
 import java.util.Collections;
 
-@Desugar
 public record FlavorGroup(
 		String id, String name, String description,
 		List<FlavorChoice> choices,

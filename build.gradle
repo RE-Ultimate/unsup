@@ -246,7 +246,7 @@ dependencies {
 		shade "transformed:${dep.name}:${dep.version}"
 	}
 
-	jabel 'com.github.bsideup.jabel:jabel-javac-plugin:1.0.0'
+	//jabel 'com.github.bsideup.jabel:jabel-javac-plugin:1.0.0'
 
 	trans 'com.grack:nanojson:1.10'
 	shade 'net.i2p.crypto:eddsa:0.3.0'
@@ -255,7 +255,6 @@ dependencies {
 	shadeCis 'org.brotli:dec:0.1.2'
 	shade 'com.unascribed:flexver-java:1.1.1'
 	shade 'me.saharnooby:qoi-java:1.2.1'
-	shade 'dnsjava:dnsjava:2.1.9'
 	
 	// IMPORTANT: LWJGL updates require uploading new bundles to unsup.y2k.diy and updating the bundle version in PuppetHandler
 	def lwjglv = '3.4.0-SNAPSHOT'
@@ -265,7 +264,7 @@ dependencies {
 
 tasks.withType(JavaCompile) {
 	sourceCompatibility = 17
-	options.release = 8
+	options.release = 17
 }
 
 configurations.transform.resolve().each { f ->
@@ -308,7 +307,6 @@ jar {
 			'me/saharnooby/qoi/': pfx+'qoi/',
 			'net/i2p/crypto/eddsa/': pfx+'eddsa/',
 			'kotlin/': pfx+'kotlin/',
-			'org/xbill/DNS/': pfx+'dnsjava/',
 			'okio/': pfx+'okio/',
 			'org/brotli/dec/': pfx+'brotli/',
 			'uk/co/lucasweb/aws/v4/signer/': pfx+'awsv4/',
@@ -352,7 +350,7 @@ def pgLibJars = files(
 	System.properties["java.home"]+"/jmods/java.desktop.jmod", // used by the puppet
 	System.properties["java.home"]+"/jmods/java.management.jmod", // for the agent
 	System.properties["java.home"]+"/jmods/java.xml.jmod", // html renderer in the opengl puppet
-	System.properties["java.home"]+"/jmods/java.logging.jmod", // used by okhttp
+	System.properties["java.home"]+"/jmods/java.net.http.jmod", // httpclient
 )
 
 task proguard(type: proguard.gradle.ProGuardTask) {
@@ -360,8 +358,6 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	injars jar.archivePath
 	libraryjars pgLibJars
 	outjars 'build/tmp/proguard.jar'
-	
-	dontoptimize
 	
 	applymapping 'build/tmp/proguard.map'
 	

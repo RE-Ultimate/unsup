@@ -12,12 +12,10 @@
  */
 package uk.co.lucasweb.aws.v4.signer;
 
-import com.github.bsideup.jabel.Desugar;
 
 /**
  * @author Yoann Rodiere
  */
-@Desugar
 record CredentialScope(String dateWithoutTimestamp, String service, String region) {
 	static final String TERMINATION_STRING = "aws4_request";
 

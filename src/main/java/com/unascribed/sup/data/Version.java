@@ -19,10 +19,8 @@
 
 package com.unascribed.sup.data;
 
-import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
 
-@Desugar
 public record Version(String name, int code) {
 
 	public JsonObject toJson() {
