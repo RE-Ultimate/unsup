@@ -223,4 +223,11 @@ public class SysPropDefs {
 	 */
 	public static final String DEBUG_OVERRIDE_REMOTE_VERSION_CODE = "unsup.debug.overrideRemoteVersionCode";
 	
+	/**
+	 * {@value}: Override the flavor chosen for a specified flavor group in the config. <i>Does not
+	 * override saved puppet state</i>.
+	 * @since 1.2.4
+	 */
+	public static final String FLAVOR = "unsup.flavor.{group}";
+	
 }

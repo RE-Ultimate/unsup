@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -229,6 +230,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 												description = "";
 											}
 											if (!changeFlavors && Iterables.contains(ourFlavors, id)) {
+												Log.debug("Applying flavor choice "+groupId+"="+id+" from saved state");
 												// a choice has already been made for this flavor
 												continue flavors;
 											}
@@ -466,8 +468,11 @@ public class PackwizHandler extends AbstractFormatHandler {
 				pwstate.put("syntheticFlavorGroups", syntheticGroupsJson);
 				final JsonArray fourFlavors = ourFlavors;
 				for (Map.Entry<String, FlavorGroup> en : syntheticGroups.entrySet()) {
-					if (changeFlavors || !en.getValue().choices().stream().anyMatch(c -> Iterables.contains(fourFlavors, c.id()))) {
+					Optional<FlavorChoice> selectedFlavor = en.getValue().choices().stream().filter(c -> Iterables.contains(fourFlavors, c.id())).findFirst();
+					if (changeFlavors || !selectedFlavor.isPresent()) {
 						unpickedGroups.add(en.getValue());
+					} else {
+						Log.debug("Applying flavor choice "+en.getValue().id()+"="+selectedFlavor.get().id()+" from saved state");
 					}
 					FlavorGroup grp = en.getValue();
 					JsonObject obj = new JsonObject();

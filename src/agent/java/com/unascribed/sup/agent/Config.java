@@ -201,7 +201,10 @@ public record Config(
 			switch (sect) {
 				case "strings" -> strings.put(subkey, v);
 				case "mmc-component-map" -> mmcComponentMap.put(subkey, v);
-				case "flavors" -> defaultFlavors.put(subkey, v);
+				case "flavors" -> {
+					Log.debug("Applying flavor choice "+k+"="+v+" from config");
+					defaultFlavors.put(subkey, v);
+				}
 				case "authorization" -> {
 					authorizers.add(Authorizer.parseSpec(subkey, v).orElseGet(() -> {
 						Log.error("Config error: authorizer for "+subkey+" is malformed! Exiting.");
@@ -230,6 +233,14 @@ public record Config(
 						insecureHosts.add(v);
 					}
 				}
+			}
+		}
+		
+		for (var kobj : System.getProperties().keySet()) {
+			if (kobj instanceof String k && k.startsWith("unsup.flavor.")) {
+				var v = System.getProperty(k);
+				Log.debug("Applying flavor choice "+k+"="+v+" from sysprops");
+				defaultFlavors.put(k, v);
 			}
 		}
 		
