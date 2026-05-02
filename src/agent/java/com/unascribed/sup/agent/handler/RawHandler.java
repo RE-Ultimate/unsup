@@ -3,8 +3,7 @@ package com.unascribed.sup.agent.handler;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Map;
-
+import java.util.Collections;
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParserException;
 import com.unascribed.sup.agent.data.HashFunction;
@@ -25,7 +24,7 @@ public class RawHandler extends AbstractFormatHandler {
 		var plan = new UpdatePlan<>(false, baseState);
 		var path = src.getPath();
 		plan.files.put(path.substring(path.lastIndexOf('/')+1), fplan);
-		return new CheckResult(new Version("debug", 0), new Version("debug", 1), plan, Map.of());
+		return new CheckResult(new Version("debug", 0), new Version("debug", 1), plan, Collections.emptyMap());
 	}
 
 }
