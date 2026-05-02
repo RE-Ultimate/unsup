@@ -8,22 +8,35 @@ import java.io.InputStream;
 import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.util.Bases;
 
-public class CRLFHell {
+import okio.ByteString;
+
+public class CorruptionHelper {
 
 	public enum CorruptionType {
 		UNKNOWN,
 		EXPECTED_UNIX_GOT_DOS,
 		EXPECTED_DOS_GOT_UNIX,
+		LFS_POINTER,
 		;
 	}
 	
+	private static final ByteString LFS_HEADER = ByteString.encodeUtf8("version https://git-lfs.github.com/spec/v1");
+	
 	public static CorruptionType checkForCorruption(HashFunction func, String expectedHash, InputStream src) throws IOException {
+		if (func == null || expectedHash == null) return CorruptionType.UNKNOWN;
 		var dos = func.createMessageDigest();
 		var unix = func.createMessageDigest();
 		var raw = func.createMessageDigest();
 		if (!(src instanceof ByteArrayInputStream) && !(src instanceof BufferedInputStream)) {
 			src = new BufferedInputStream(src);
 		}
+		byte[] header = new byte[LFS_HEADER.size()];
+		src.mark(LFS_HEADER.size());
+		src.read(header); // guaranteed to read all bytes on a BAIS or BIS
+		if (ByteString.of(header).equals(LFS_HEADER)) {
+			return CorruptionType.LFS_POINTER;
+		}
+		src.reset();
 		while (true) {
 			int b = src.read();
 			if (b == -1) break;

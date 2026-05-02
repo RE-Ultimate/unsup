@@ -70,7 +70,12 @@ import com.unascribed.sup.util.Iterables;
 
 public class PackwizHandler extends AbstractFormatHandler {
 	
-	public static CheckResult check(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState) throws IOException, URISyntaxException {
+	public PackwizHandler(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState) {
+		super(src, autoaccept, forceFlavorDefaults, baseState);
+	}
+
+	@Override
+	public CheckResult check() throws IOException, URISyntaxException {
 		var cleanup = new Closeable[1];
 		var delete = new File[1];
 		try {

@@ -19,7 +19,9 @@
 
 package com.unascribed.sup.agent.handler;
 
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -27,10 +29,12 @@ import java.util.Map;
 import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
+import com.grack.nanojson.JsonParserException;
 import com.unascribed.sup.agent.ExitCode;
 import com.unascribed.sup.agent.Log;
 import com.unascribed.sup.agent.PuppetHandler;
 import com.unascribed.sup.agent.data.HashFunction;
+import com.unascribed.sup.ann.Nullable;
 import com.unascribed.sup.data.FlavorGroup;
 import com.unascribed.sup.data.Version;
 import com.unascribed.sup.pieces.NullRejectingMap;
@@ -50,12 +54,22 @@ public abstract class AbstractFormatHandler {
 	}
 
 	@Desugar
-	public record FileState(HashFunction func, String hash, long size) {
+	public record FileState(@Nullable HashFunction func, @Nullable String hash, long size) {
 		public static final FileState EMPTY = new FileState(null, null, 0);
+		public static final FileState MAGIC = new FileState(null, "magic", -1);
 
 		public boolean sizeMatches(long size) {
 			if (this.size == -1) return true;
 			return size == this.size;
+		}
+		
+		public boolean hashMatches(String hash) {
+			if (this == MAGIC) {
+				Log.warn("Magic hash is pretending to match "+hash);
+				return true;
+			}
+			if (this.hash == null) return false;
+			return this.hash.equals(hash);
 		}
 
 		@Override
@@ -118,5 +132,19 @@ public abstract class AbstractFormatHandler {
 		}
 		return ourFlavors;
 	}
+	
+	protected final URI src;
+	protected final boolean autoaccept;
+	protected final boolean forceFlavorDefaults;
+	protected final JsonObject baseState;
+	
+	public AbstractFormatHandler(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState) {
+		this.src = src;
+		this.autoaccept = autoaccept;
+		this.forceFlavorDefaults = forceFlavorDefaults;
+		this.baseState = baseState;
+	}
+
+	public abstract CheckResult check() throws IOException, URISyntaxException, JsonParserException;
 
 }

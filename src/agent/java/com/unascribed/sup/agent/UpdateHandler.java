@@ -51,15 +51,17 @@ import java.util.regex.Pattern;
 import com.grack.nanojson.JsonObject;
 import com.unascribed.sup.agent.PuppetHandler.AlertOption;
 import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
+import com.unascribed.sup.agent.handler.AbstractFormatHandler;
 import com.unascribed.sup.agent.handler.AbstractFormatHandler.CheckResult;
 import com.unascribed.sup.agent.handler.AbstractFormatHandler.FilePlan;
 import com.unascribed.sup.agent.handler.AbstractFormatHandler.FileState;
 import com.unascribed.sup.agent.handler.AbstractFormatHandler.UpdatePlan;
 import com.unascribed.sup.agent.handler.NativeHandler;
 import com.unascribed.sup.agent.handler.PackwizHandler;
-import com.unascribed.sup.agent.util.CRLFHell;
+import com.unascribed.sup.agent.handler.RawHandler;
+import com.unascribed.sup.agent.util.CorruptionHelper;
 import com.unascribed.sup.agent.util.RequestHelper;
-import com.unascribed.sup.agent.util.CRLFHell.CorruptionType;
+import com.unascribed.sup.agent.util.CorruptionHelper.CorruptionType;
 import com.unascribed.sup.agent.util.RequestHelper.DownloadedFile;
 import com.unascribed.sup.agent.util.RequestHelper.Retry;
 import com.unascribed.sup.data.AlertMessageType;
@@ -101,14 +103,13 @@ public class UpdateHandler {
 						}
 					} catch (UnknownHostException e) {}
 				}
-				res = switch (fmt) {
-					case NONE ->
-						throw new AssertionError("Config must be initialized by this point");
-					case UNSUP ->
-						NativeHandler.check(src, autoaccept, forceFlavorDefaults, baseState);
-					case PACKWIZ ->
-						PackwizHandler.check(src, autoaccept, forceFlavorDefaults, baseState);
+				HandlerConstructor handlerCons = switch (fmt) {
+					case NONE -> throw new AssertionError("Config must be initialized by this point");
+					case UNSUP -> NativeHandler::new;
+					case PACKWIZ -> PackwizHandler::new;
+					case RAW -> RawHandler::new;
 				};
+				res = handlerCons.construct(src, autoaccept, forceFlavorDefaults, baseState).check();
 			}
 			if (res != null) {
 				Agent.sourceVersion = res.ourVersion.name();
@@ -137,6 +138,10 @@ public class UpdateHandler {
 		} finally {
 			PuppetHandler.tellPuppet(":subtitle=");
 		}
+	}
+	
+	private interface HandlerConstructor {
+		AbstractFormatHandler construct(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState);
 	}
 
 	private static JsonObject applyUpdate(CheckResult res, boolean dryRun) throws IOException {
@@ -192,7 +197,7 @@ public class UpdateHandler {
 				boolean normalConflict = false;
 				long size = dest.length();
 				if (from.hash() == null) {
-					if (to.sizeMatches(size) && to.hash().equals(RequestHelper.hash(to.func(), dest))) {
+					if (to.func() != null && to.sizeMatches(size) && to.hashMatches(RequestHelper.hash(to.func(), dest))) {
 						Log.info(path+" was created in this update and locally, but the local version matches the update. Skipping");
 						f.skip = true;
 						continue;
@@ -200,9 +205,9 @@ public class UpdateHandler {
 					conflictType = ConflictType.LOCAL_AND_REMOTE_CREATED;
 				} else if (from.sizeMatches(size)) {
 					String hash = RequestHelper.hash(from.func(), dest);
-					if (from.hash().equals(hash)) {
+					if (from.hashMatches(hash)) {
 						Log.debug(path+" matches the expected from hash");
-					} else if (to.sizeMatches(size) && to.hash().equals(from.func() == to.func() ? hash : RequestHelper.hash(to.func(), dest))) {
+					} else if (to.sizeMatches(size) && to.hashMatches(from.func() == to.func() ? hash : RequestHelper.hash(to.func(), dest))) {
 						Log.info(path+" matches the expected to hash, so has already been updated locally. Skipping");
 						f.skip = true;
 						continue;
@@ -210,7 +215,7 @@ public class UpdateHandler {
 						Log.info("CONFLICT: "+path+" doesn't match the expected from hash ("+hash+" != "+ from.hash() +")");
 						normalConflict = true;
 					}
-				} else if (to.sizeMatches(size) && to.hash().equals(RequestHelper.hash(to.func(), dest))) {
+				} else if (to.sizeMatches(size) && to.hashMatches(RequestHelper.hash(to.func(), dest))) {
 					Log.info(path+" matches the expected to hash, so has already been updated locally. Skipping");
 					f.skip = true;
 					continue;
@@ -478,24 +483,15 @@ public class UpdateHandler {
 						}
 						updateProgress.run();
 					}, to.func(), f.hostile);
-			if (!df.hash().equals(to.hash())) {
-				CorruptionType type = CRLFHell.checkForCorruption(to.func(), to.hash(), new FileInputStream(df.file()));
-				String extra = "";
-				switch (type) {
-					case UNKNOWN: {
-						// Can't provide any help here.
-						break;
-					}
-					case EXPECTED_DOS_GOT_UNIX: {
-						extra = " - it appears to have been corrupted by a DOS-to-Unix line-ending conversion. "
-								+ "Ensure autocrlf is disabled in Git for anyone that uses Windows to work on this pack.";
-						break;
-					}
-					case EXPECTED_UNIX_GOT_DOS: {
-						extra = " - it appears to have been corrupted by a Unix-to-DOS line-ending conversion.";
-						break;
-					}
-				}
+			if (!to.hashMatches(df.hash())) {
+				CorruptionType type = CorruptionHelper.checkForCorruption(to.func(), to.hash(), new FileInputStream(df.file()));
+				String extra = switch (type) {
+					case UNKNOWN -> ""; // Can't provide any help here.
+					case EXPECTED_DOS_GOT_UNIX -> " - it appears to have been corrupted by a DOS-to-Unix line-ending conversion. "
+								+ "Ensure autocrlf is disabled in Git for anyone that uses Windows to work on this pack";
+					case EXPECTED_UNIX_GOT_DOS -> " - it appears to have been corrupted by a Unix-to-DOS line-ending conversion";
+					case LFS_POINTER -> " - it appears to be a Git LFS pointer file";
+				};
 				if (path.endsWith(".js")) {
 					extra += " (Ensure JavaScript Minification is disabled on the host)";
 				} else if (path.endsWith(".css")) {

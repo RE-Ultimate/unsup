@@ -49,13 +49,18 @@ import com.unascribed.sup.util.Iterables;
 
 public class NativeHandler extends AbstractFormatHandler {
 	
+	public NativeHandler(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState) {
+		super(src, autoaccept, forceFlavorDefaults, baseState);
+	}
+
 	protected static final String DEFAULT_HASH_FUNCTION = HashFunction.SHA2_256.name;
 
 	private static class FileToDownloadWithCode extends FilePlan {
 		int code;
 	}
 	
-	public static CheckResult check(URI src, boolean autoaccept, boolean forceFlavorDefaults, JsonObject baseState) throws IOException, JsonParserException, URISyntaxException {
+	@Override
+	public CheckResult check() throws IOException, JsonParserException, URISyntaxException {
 		Log.info("Loading unsup-format manifest from "+src);
 		JsonObject manifest = RequestHelper.loadJson(src, 1*M, src.resolve("manifest.sig"));
 		checkManifestFlavor(manifest, "root", it -> it == 1);

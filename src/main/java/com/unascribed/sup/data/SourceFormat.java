@@ -20,7 +20,12 @@
 package com.unascribed.sup.data;
 
 public enum SourceFormat {
-	UNSUP, // native SKCraft-inspired JSON manifest
-	PACKWIZ, // Packwiz pack.toml
-	NONE, // uninitialized special value
+	/// native SKCraft-inspired JSON manifest
+	UNSUP,
+	/// Packwiz pack.toml
+	PACKWIZ,
+	/// uninitialized special value
+	NONE,
+	/// retrieve a single file for debugging
+	RAW,
 }

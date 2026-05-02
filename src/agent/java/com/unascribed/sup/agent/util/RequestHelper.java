@@ -63,8 +63,9 @@ import com.unascribed.sup.agent.Agent;
 import com.unascribed.sup.agent.Log;
 import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.agent.signing.SigProvider;
-import com.unascribed.sup.agent.util.CRLFHell.CorruptionType;
+import com.unascribed.sup.agent.util.CorruptionHelper.CorruptionType;
 import com.unascribed.sup.ann.NotNull;
+import com.unascribed.sup.ann.Nullable;
 import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.pieces.NullOutputStream;
@@ -74,6 +75,7 @@ import com.unascribed.sup.util.SuppressFBWarnings;
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 import okhttp3.Response;
+import okio.ByteString;
 
 public class RequestHelper {
 	
@@ -141,9 +143,13 @@ public class RequestHelper {
 	}
 
 	public static byte[] downloadToMemory(URI url, int sizeLimit) throws IOException {
+		return downloadToMemory(url, sizeLimit, false);
+	}
+	
+	public static byte[] downloadToMemory(URI url, int sizeLimit, boolean sendLimitToServer) throws IOException {
 		return withRetries(10, () -> {
 			try {
-				InputStream conn = get(url).stream();
+				InputStream conn = get(url, false, 0, sendLimitToServer ? sizeLimit-1 : 0).stream();
 				var resp = RequestHelper.collectLimited(conn, sizeLimit);
 				if (resp.isPresent()) return resp.get();
 				throw new IOException("Received more than "+sizeLimit+" bytes from server");
@@ -160,6 +166,7 @@ public class RequestHelper {
 	private static String currentFirefoxVersion;
 	private static final Set<String> alwaysHostile = new HashSet<>(Arrays.asList(Bases.b64ToString("YmV0YS5jdXJzZWZvcmdlLmNvbXx3d3cuY3Vyc2Vmb3JnZS5jb218Y3Vyc2Vmb3JnZS5jb218bWluZWNyYWZ0LmN1cnNlZm9yZ2UuY29tfG1lZGlhZmlsZXouZm9yZ2VjZG4ubmV0fG1lZGlhZmlsZXMuZm9yZ2VjZG4ubmV0fGZvcmdlY2RuLm5ldHxlZGdlLmZvcmdlY2RuLm5ldHxzdGF0aWMucGxhbmV0bWluZWNyYWZ0LmNvbQ==").split("\\|")));
 	private static final Pattern RAW_GITHUB = Pattern.compile("^/([^/]+/[^/]+)/raw/(.*)$");
+	private static final ByteString LFS_HEADER = ByteString.encodeUtf8("version https://git-lfs.github.com/spec/v1");
 	
 	@Desugar
 	public record ResourceRef(InputStream stream, OptionalLong size, boolean supportsRange) implements Closeable {
@@ -182,6 +189,10 @@ public class RequestHelper {
 	}
 	
 	public static ResourceRef get(URI url, boolean hostile, long startAt) throws IOException {
+		return get(url, hostile, startAt, 0);
+	}
+	
+	public static ResourceRef get(URI url, boolean hostile, long startAt, long endAt) throws IOException {
 		if (SysProps.DEBUG_REQUESTS.orBias()) {
 			Log.debug((hostile ? "Carefully r" : "R")+"etrieving "+url+(startAt == 0 ? "" : " (starting at byte "+startAt+")"));
 		}
@@ -192,12 +203,21 @@ public class RequestHelper {
 			ch.position(startAt);
 			return new ResourceRef(fis, ch.size()-startAt, true);
 		}
-		if ("github.com".equals(url.getHost())) {
+		if (Agent.config().autofix() && "github.com".equals(url.getHost())) {
 			var m = RAW_GITHUB.matcher(url.getRawPath());
 			if (m.matches()) {
 				try {
 					var corrected = new URI(url.getScheme(), url.getUserInfo(), "raw.githubusercontent.com", url.getPort(), "/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
 					Log.debug("Correcting bad 502-prone github.com/*/*/raw/ URL to raw.githubusercontent.com ("+url+" -> "+corrected+")");
+					try {
+						var header = ByteString.of(downloadToMemory(corrected, LFS_HEADER.size(), true));
+						if (header.equals(LFS_HEADER)) {
+							Log.debug("Detected LFS header, correcting again to media.githubusercontent.com (-> "+corrected+")");
+							corrected = new URI(url.getScheme(), url.getUserInfo(), "media.githubusercontent.com", url.getPort(), "/media/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
+						}
+					} catch (IOException e) {
+						Log.debug("Exception while checking for LFS header, continuing without LFS check", e);
+					}
 					return get(corrected, hostile, startAt);
 				} catch (URISyntaxException e) {
 				}
@@ -231,7 +251,11 @@ public class RequestHelper {
 								fhostile ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:"+currentFirefoxVersion+") Gecko/20100101 Firefox/"+currentFirefoxVersion
 								         : "unsup/"+Util.VERSION+" (+https://git.sleeping.town/unascribed/unsup)"
 							);
-				if (startAt != 0) {
+				if (endAt > 0) {
+					reqbldr.addHeader("Range", "bytes="+startAt+"-"+endAt);
+				} else if (endAt < 0) {
+					reqbldr.addHeader("Range", "bytes"+endAt);
+				} else if (startAt != 0) {
 					reqbldr.addHeader("Range", "bytes="+startAt+"-");
 				}
 				if (fhostile) {
@@ -245,8 +269,11 @@ public class RequestHelper {
 					reqbldr.header("Priority", "u=0, i");
 					reqbldr.header("TE", "trailers");
 				}
+				if (endAt != 0) {
+					reqbldr.header("Accept-Encoding", "identity");
+				}
 				Response res = Agent.okhttp().newCall(reqbldr.build()).execute();
-				if (res.code() != (startAt == 0 ? 200 : 206)) {
+				if (res.code() != (startAt == 0 && endAt == 0 ? 200 : 206)) {
 					if (res.code() == 429) {
 						int delay = 0;
 						String val = res.header("Retry-After");
@@ -408,16 +435,16 @@ public class RequestHelper {
 		if (data == null) throw new IOException("Size limit of "+(sizeLimit/K)+"K for "+src+" exceeded");
 		String hash = Bases.bytesToHex(func.createMessageDigest().digest(data));
 		if (!hash.equals(expectedHash)) {
-			CorruptionType type = CRLFHell.checkForCorruption(func, expectedHash, new ByteArrayInputStream(data));
-			String culprit = null;
-			if (type == CorruptionType.EXPECTED_UNIX_GOT_DOS) {
-				culprit = "a Unix-to-DOS line ending conversion";
-			} else if (type == CorruptionType.EXPECTED_DOS_GOT_UNIX) {
-				culprit = "a DOS-to-Unix line ending conversion";
-			}
+			CorruptionType type = CorruptionHelper.checkForCorruption(func, expectedHash, new ByteArrayInputStream(data));
+			String culprit = switch (type) {
+				case EXPECTED_DOS_GOT_UNIX -> "is corrupted by a Unix-to-DOS line ending conversion. Ensure autocrlf is disabled in Git.";
+				case EXPECTED_UNIX_GOT_DOS -> "is corrupted by a DOS-to-Unix line ending conversion. Ensure autocrlf is disabled in Git.";
+				case LFS_POINTER -> "appears to be a Git LFS pointer file. Double-check your URLs.";
+				case UNKNOWN -> null;
+			};
 			String msg;
 			if (culprit != null) {
-				msg = src+" is corrupted by "+culprit+". Ensure autocrlf is disabled in Git. (Expected "+expectedHash+", but got "+hash+")";
+				msg = src+" "+culprit+". (Expected "+expectedHash+", but got "+hash+")";
 			} else {
 				msg = "Expected "+expectedHash+" from "+src+", but got "+hash;
 			}
@@ -436,7 +463,7 @@ public class RequestHelper {
 	 * @param hash null if no hash function was specified
 	 */
 	@Desugar
-	public record DownloadedFile(String hash, File file) {}
+	public record DownloadedFile(@Nullable String hash, File file) {}
 	
 	public static DownloadedFile downloadToFile(URI url, File dir, long size, Progressor progressCb, HashFunction hashFunc, boolean hostile) throws IOException {
 		File file = dir == null ? null : File.createTempFile("download", "", dir);

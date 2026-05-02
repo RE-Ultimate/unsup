@@ -89,7 +89,8 @@ public record Config(
 		@NotNull PuppetMode puppetMode, @NotNull String lang,
 		@Nullable ProxySelector proxySelector, @NotNull List<X509Certificate> additionalCaCerts,
 		@NotNull List<String> insecureHosts,
-		boolean usePlatformCaCerts, boolean useBuiltinCaCerts
+		boolean usePlatformCaCerts, boolean useBuiltinCaCerts,
+		boolean autofix
 	) {
 	
 	public Config() {
@@ -124,7 +125,8 @@ public record Config(
 			/*List<X509Certificate> additionalCaCerts*/Collections.emptyList(),
 			/*List<String> insecureHosts*/Collections.emptyList(),
 			/*boolean usePlatformCaCerts*/true,
-			/*boolean useBuiltinCaCerts*/true
+			/*boolean useBuiltinCaCerts*/true,
+			/*boolean autofix*/true
 		);
 	}
 
@@ -175,6 +177,12 @@ public record Config(
 		List<String> insecureHosts = new ArrayList<>();
 		boolean usePlatformCaCerts = config.getBoolean("http.use_platform_cacerts", true);
 		boolean useBuiltinCaCerts = config.getBoolean("http.use_builtin_cacerts", true);
+		boolean autofix = config.getBoolean("autofix", true);
+		
+		if (format == SourceFormat.NONE) {
+			Log.error("Config error: source format is malformed! Cannot be none. Exiting.");
+			throw ExitCode.CONFIG_ERROR.exit();
+		}
 		
 		try {
 			source = new URI(config.get("source"));
@@ -358,7 +366,7 @@ public record Config(
 				Collections.unmodifiableMap(strings), modpackName, brandingIcon,
 				flavorDialogGeom, flavorDialogBias, puppetMode, lang, proxySelector,
 				Collections.unmodifiableList(additionalCaCerts), Collections.unmodifiableList(insecureHosts),
-				usePlatformCaCerts, useBuiltinCaCerts);
+				usePlatformCaCerts, useBuiltinCaCerts, autofix);
 	}
 
 	private static Optional<Function<OkHttpClient, @NotNull Dns>> parseDns(String v) {
