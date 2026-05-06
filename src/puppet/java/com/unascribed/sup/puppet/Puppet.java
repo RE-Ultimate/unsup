@@ -391,7 +391,8 @@ public class Puppet {
 		while (true) {
 			try {
 				mainThreadWorkQueue.take().run();
-			} catch (InterruptedException e) {
+			} catch (Throwable t) {
+				log("ERROR", "Unexpected exception thrown by main thread work item", t);
 			}
 		}
 	}
