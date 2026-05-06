@@ -398,10 +398,10 @@ public abstract class Window {
 				}
 				
 				SDL_GL_MakeCurrent(NULL, NULL);
+				memFree(GL.getCapabilities().getAddressBuffer());
+				GL.setCapabilities(null);
 				
 				Puppet.runOnMainThread(() -> {
-					memFree(GL.getCapabilities().getAddressBuffer());
-					GL.setCapabilities(null);
 					synchronized (this) {
 						SDL_GL_DestroyContext(glContext);
 						SDL_DestroyCursor(defaultCursor);
