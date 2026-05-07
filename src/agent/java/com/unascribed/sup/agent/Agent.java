@@ -70,6 +70,7 @@ import com.unascribed.sup.pieces.ExceptableRunnable;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Resources;
 
+import com.playsawdust.chipper.toolbox.Stopwatch;
 import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
 import okhttp3.OkHttpClient;
@@ -114,8 +115,7 @@ public class Agent {
 	
 	public static void premain(String arg) {
 		launched = true;
-		long start = System.nanoTime();
-		try {
+		try (var sw = Stopwatch.time(s -> Log.info("Finished after "+s+"."))) {
 			Log.init();
 			Log.info((standalone ? "Starting in standalone mode" : "Launch hijack successful")+". unsup v"+Util.VERSION);
 			if (!preinit(arg)) return;
@@ -224,7 +224,6 @@ public class Agent {
 		} catch (InterruptedException e) {
 			throw new AssertionError(e);
 		} finally {
-			Log.info("Finished after "+TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-start)+"ms.");
 			cleanup();
 		}
 	}
