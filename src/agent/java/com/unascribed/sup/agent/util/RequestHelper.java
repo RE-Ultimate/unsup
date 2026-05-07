@@ -36,7 +36,6 @@ import java.net.URISyntaxException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -433,7 +432,7 @@ public class RequestHelper {
 	public static Toml loadToml(URI src, int sizeLimit, HashFunction func, String expectedHash) throws IOException {
 		byte[] data = downloadToMemory(src, sizeLimit);
 		if (data == null) throw new IOException("Size limit of "+(sizeLimit/K)+"K for "+src+" exceeded");
-		String hash = Bases.bytesToHex(func.createMessageDigest().digest(data));
+		String hash = func.getHasher().hash(data).toHexLower();
 		if (!hash.equals(expectedHash)) {
 			CorruptionType type = CorruptionHelper.checkForCorruption(func, expectedHash, new ByteArrayInputStream(data));
 			String culprit = switch (type) {
@@ -473,7 +472,7 @@ public class RequestHelper {
 				long readTotal = 0;
 				OptionalLong actualSize = OptionalLong.empty();
 				long lastProgressUpdate = 0;
-				MessageDigest digest = hashFunc == null ? null : hashFunc.createMessageDigest();
+				var digest = hashFunc == null ? null : hashFunc.getHasher().newSession();
 				var ref = get(url, hostile);
 				try {
 					var in = ref.stream();
@@ -511,7 +510,7 @@ public class RequestHelper {
 							if (actualSize.isPresent() && readTotal > actualSize.getAsLong())
 								throw new IOException("Overread; was told to expect "+actualSize.getAsLong()+" bytes, but got at least "+readTotal);
 							out.write(buf, 0, read);
-							if (digest != null) digest.update(buf, 0, read);
+							if (digest != null) digest.contribute(buf, 0, read);
 							if (progressCb != null && System.nanoTime()-lastProgressUpdate > ONE_SECOND_IN_NANOS/90) {
 								lastProgressUpdate = System.nanoTime();
 								progressCb.updateProgress(Progressor.State.DOWNLOADING, readTotal, actualSize);
@@ -531,7 +530,7 @@ public class RequestHelper {
 				if (progressCb != null) progressCb.updateProgress(Progressor.State.COMPLETE, readTotal, actualSize);
 				String hash = null;
 				if (digest != null) {
-					hash = Bases.bytesToHex(digest.digest());
+					hash = digest.finish().toHexLower();
 				}
 				return new DownloadedFile(hash, file);
 			} catch (InterruptedIOException e) {
@@ -545,16 +544,16 @@ public class RequestHelper {
 	}
 	
 	public static String hash(HashFunction func, File f) throws IOException {
-		MessageDigest digest = func.createMessageDigest();
+		var digest = func.getHasher().newSession();
 		byte[] buf = new byte[16384];
 		try (FileInputStream in = new FileInputStream(f)) {
 			while (true) {
 				int read = in.read(buf);
 				if (read == -1) break;
-				digest.update(buf, 0, read);
+				digest.contribute(buf, 0, read);
 			}
 		}
-		return Bases.bytesToHex(digest.digest());
+		return digest.finish().toHexLower();
 	}
 
 	/**

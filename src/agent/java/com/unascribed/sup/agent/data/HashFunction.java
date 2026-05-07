@@ -19,32 +19,29 @@
 
 package com.unascribed.sup.agent.data;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
-
 import com.unascribed.sup.agent.Agent;
 import com.unascribed.sup.agent.Log;
-import com.unascribed.sup.agent.pieces.Murmur2CFMessageDigest;
-import com.unascribed.sup.util.Bases;
+import com.unascribed.sup.agent.pieces.Murmur2CFHasher;
+import com.playsawdust.chipper.toolbox.io.Hasher;
+import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
 public enum HashFunction {
-	MD5("MD5", "MD5", 128, true),
-	SHA1("SHA-1", "SHA-1", 160, true),
-	SHA2_256("SHA-2 256", "SHA-256", 256, false),
-	SHA2_384("SHA-2 384", "SHA-384", 384, false),
-	SHA2_512("SHA-2 512", "SHA-512", 512, false),
-	SHA2_512_256("SHA-2 512/256", "SHA-512/256", 256, false),
+	MD5("MD5", StandardHashers.md5(), 128, true),
+	SHA1("SHA-1", StandardHashers.sha1(), 160, true),
+	SHA2_256("SHA-2 256", StandardHashers.sha2_256(), 256, false),
+	SHA2_384("SHA-2 384", StandardHashers.sha2_384(), 384, false),
+	SHA2_512("SHA-2 512", StandardHashers.sha2_512(), 512, false),
+	SHA2_512_256("SHA-2 512/256", StandardHashers.sha2_512_256(), 256, false),
 
-	MURMUR2_CF("Murmur2-CF", Murmur2CFMessageDigest::new, 32, true),
+	MURMUR2_CF("Murmur2-CF", new Murmur2CFHasher(), 32, true),
 	;
 	
 	private static final Map<String, HashFunction> BY_NAME = new HashMap<>();
 	
 	public final String name;
-	private final Supplier<MessageDigest> supplier;
+	private final Hasher hasher;
 	private final int sizeInBits;
 	private final int sizeInBytes;
 	private final int sizeInHexChars;
@@ -54,19 +51,9 @@ public enum HashFunction {
 	
 	private boolean hasWarned = false;
 	
-	HashFunction(String name, String alg, int sizeInBits, boolean insecure) {
-		this(name, () -> {
-			try {
-				return MessageDigest.getInstance(alg);
-			} catch (NoSuchAlgorithmException e) {
-				throw new UnsupportedOperationException(e);
-			}
-		}, sizeInBits, insecure);
-	}
-	
-	HashFunction(String name, Supplier<MessageDigest> supplier, int sizeInBits, boolean insecure) {
+	HashFunction(String name, Hasher hasher, int sizeInBits, boolean insecure) {
 		this.name = name;
-		this.supplier = supplier;
+		this.hasher = hasher;
 		this.sizeInBits = sizeInBits;
 		this.sizeInBytes = (sizeInBits+7)/8;
 		this.sizeInHexChars = sizeInBytes()*2;
@@ -74,7 +61,7 @@ public enum HashFunction {
 		boolean unsupported;
 		String emptyHash;
 		try {
-			emptyHash = Bases.bytesToHex(supplier.get().digest());
+			emptyHash = hasher.hash().toHexLower();
 			unsupported = false;
 		} catch (UnsupportedOperationException e) {
 			Log.warn("This JRE does not support "+name);
@@ -89,10 +76,10 @@ public enum HashFunction {
 		return new UnsupportedOperationException(name+" is not supported by this JRE - the manifest needs to be changed to not use this hash function, or you need to update to a newer Java patch");
 	}
 	
-	public MessageDigest createMessageDigest() {
+	public Hasher getHasher() {
 		if (unsupported) throw unsupported();
 		checkSecureHashEnforcement();
-		return supplier.get();
+		return hasher;
 	}
 
 	public String emptyHash() {

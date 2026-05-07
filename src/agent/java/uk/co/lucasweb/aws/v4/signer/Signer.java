@@ -16,14 +16,14 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.github.bsideup.jabel.Desugar;
-import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.util.Bases;
+
+import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
 import okhttp3.Request;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,9 +56,8 @@ public class Signer {
 	}
 
 	String getStringToSign() {
-		MessageDigest md = HashFunction.SHA2_256.createMessageDigest();
 		byte[] bytes = getCanonicalRequest().getBytes(UTF_8);
-		String hashedCanonicalRequest = Bases.bytesToHex(md.digest(bytes));
+		String hashedCanonicalRequest = StandardHashers.sha2_256().hash(bytes).toHexLower();
 		return buildStringToSign(date, scope.get(), hashedCanonicalRequest);
 	}
 

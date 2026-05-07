@@ -33,7 +33,6 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,6 +59,11 @@ import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Strings;
 
+import com.playsawdust.chipper.toolbox.collect.ro.ROList;
+import com.playsawdust.chipper.toolbox.collect.ro.ROMap;
+import com.playsawdust.chipper.toolbox.collect.ro.ROSet;
+import com.playsawdust.chipper.toolbox.collect.ro.ReadOnly;
+
 import okhttp3.Dns;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -72,23 +76,23 @@ import okhttp3.dnsoverhttps.DnsOverHttps;
 @Desugar
 public record Config(
 		boolean enforceSecureHashes,
-		boolean useEnvs, @Nullable String detectedEnv, @NotNull Set<String> validEnvs,
+		boolean useEnvs, @Nullable String detectedEnv, @NotNull ROSet<String> validEnvs,
 		@NotNull Behavior behavior, boolean offerChangeFlavors,
 		@NotNull SourceFormat format, @NotNull URI source, boolean serverAuthority,
 		boolean updateMMCPack, boolean noGui,
 		@NotNull String initialSubtitle,
-		@NotNull List<AuthorizerSpec> authorizers,
+		@NotNull ROList<AuthorizerSpec> authorizers,
 		@NotNull Function<OkHttpClient, @NotNull Dns> dnsBuilder,
-		@NotNull Map<String, String> defaultFlavors,
+		@NotNull ROMap<String, String> defaultFlavors,
 		@Nullable SigProvider packSig, @Nullable SigProvider altPackSig,
 		@NotNull Multimap<String, String> mmcComponentMap,
-		@NotNull Map<ColorChoice, String> colorChoices,
-		@NotNull Map<String, String> strings,
+		@NotNull ROMap<ColorChoice, String> colorChoices,
+		@NotNull ROMap<String, String> strings,
 		@NotNull Optional<String> modpackName, @NotNull Optional<String> brandingIcon,
 		@NotNull Geometry flavorDialogGeom, double flavorDialogBias,
 		@NotNull PuppetMode puppetMode, @NotNull String lang,
-		@Nullable ProxySelector proxySelector, @NotNull List<X509Certificate> additionalCaCerts,
-		@NotNull List<String> insecureHosts,
+		@Nullable ProxySelector proxySelector, @NotNull ROList<X509Certificate> additionalCaCerts,
+		@NotNull ROList<String> insecureHosts,
 		boolean usePlatformCaCerts, boolean useBuiltinCaCerts,
 		boolean autofix
 	) {
@@ -98,7 +102,7 @@ public record Config(
 			/*boolean enforceSecureHashes*/false,
 			/*boolean useEnvs*/false,
 			/*@Nullable String detectedEnv*/null,
-			/*Set<String> validEnvs*/Collections.emptySet(),
+			/*Set<String> validEnvs*/ReadOnly.set(),
 			/*Behavior behavior*/Behavior.MANUAL,
 			/*boolean offerChangeFlavors*/false,
 			/*SourceFormat format*/SourceFormat.NONE,
@@ -107,14 +111,14 @@ public record Config(
 			/*boolean updateMMCPack*/false,
 			/*boolean noGui*/false,
 			/*String initialSubtitle*/"",
-			/*List<AuthorizerSpec> authorizers*/Collections.emptyList(),
+			/*List<AuthorizerSpec> authorizers*/ReadOnly.list(),
 			/*Function<OkHttpClient, @NotNull Dns> dnsBuilder*/c -> Dns.SYSTEM,
-			/*Map<String, String> defaultFlavors*/Collections.emptyMap(),
+			/*Map<String, String> defaultFlavors*/ReadOnly.map(),
 			/*@Nullable SigProvider packSig*/null,
 			/*@Nullable SigProvider altPackSig*/null,
 			/*Multimap<String, String> mmcComponentMap*/new Multimap<String, String>().unmodifiable(),
-			/*Map<ColorChoice, String> colorChoices*/Collections.emptyMap(),
-			/*Map<String, String> strings*/Collections.emptyMap(),
+			/*Map<ColorChoice, String> colorChoices*/ReadOnly.map(),
+			/*Map<String, String> strings*/ReadOnly.map(),
 			/*Optional<String> modpackName*/Optional.empty(),
 			/*Optional<String> brandingIcon*/Optional.empty(),
 			/*Geometry flavorDialogGeom*/new Geometry(600, 400),
@@ -122,8 +126,8 @@ public record Config(
 			/*PuppetMode puppetMode*/PuppetMode.AUTO,
 			/*String lang*/SysProps.LANGUAGE.orBias(),
 			/*ProxySelector proxySelector*/ProxySelector.getDefault(),
-			/*List<X509Certificate> additionalCaCerts*/Collections.emptyList(),
-			/*List<String> insecureHosts*/Collections.emptyList(),
+			/*List<X509Certificate> additionalCaCerts*/ReadOnly.list(),
+			/*List<String> insecureHosts*/ReadOnly.list(),
 			/*boolean usePlatformCaCerts*/true,
 			/*boolean useBuiltinCaCerts*/true,
 			/*boolean autofix*/true
@@ -358,14 +362,14 @@ public record Config(
 			Log.debug("Using default proxy");
 		}
 		
-		return new Config(enforceSecureHashes, useEnvs, detectedEnv, validEnvs, behavior,
-				offerChangeFlavors, format, source, serverAuthority, updateMMCPack, noGui,
-				initialSubtitle, Collections.unmodifiableList(authorizers), dnsBuilder,
-				Collections.unmodifiableMap(defaultFlavors), packSig, altPackSig,
-				mmcComponentMap.unmodifiable(), Collections.unmodifiableMap(colorChoices),
-				Collections.unmodifiableMap(strings), modpackName, brandingIcon,
+		return new Config(enforceSecureHashes, useEnvs, detectedEnv, ReadOnly.copyOf(validEnvs),
+				behavior, offerChangeFlavors, format, source, serverAuthority, updateMMCPack, noGui,
+				initialSubtitle, ReadOnly.copyOf(authorizers), dnsBuilder,
+				ReadOnly.copyOf(defaultFlavors), packSig, altPackSig,
+				mmcComponentMap.unmodifiable(), ReadOnly.copyOf(colorChoices),
+				ReadOnly.copyOf(strings), modpackName, brandingIcon,
 				flavorDialogGeom, flavorDialogBias, puppetMode, lang, proxySelector,
-				Collections.unmodifiableList(additionalCaCerts), Collections.unmodifiableList(insecureHosts),
+				ReadOnly.copyOf(additionalCaCerts), ReadOnly.copyOf(insecureHosts),
 				usePlatformCaCerts, useBuiltinCaCerts, autofix);
 	}
 

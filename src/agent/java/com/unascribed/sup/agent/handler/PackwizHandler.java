@@ -57,7 +57,7 @@ import com.unascribed.sup.agent.PuppetHandler;
 import com.unascribed.sup.agent.PuppetHandler.AlertOption;
 import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
 import com.unascribed.sup.agent.data.HashFunction;
-import com.unascribed.sup.agent.pieces.Murmur2CFMessageDigest;
+import com.unascribed.sup.agent.pieces.Murmur2CFHasher;
 import com.unascribed.sup.agent.util.RequestHelper;
 import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.AlertMessageType;
@@ -359,7 +359,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 											var dataOpt = RequestHelper.collectLimited(in, 8*K);
 											if (!dataOpt.isPresent()) throw new IOException("Size limit of 8K for "+path+" exceeded");
 											var data = dataOpt.get();
-											String computedHash = Bases.bytesToHex(func.createMessageDigest().digest(data));
+											String computedHash = func.getHasher().hash(data).toHexLower();
 											if (computedHash.equals(hash)) {
 												if (SysProps.DEBUG_REQUESTS.orBias()) {
 													Log.debug("Using "+path+" from metafiles zip");
@@ -537,7 +537,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 					HashFunction thisFunc = parseFunc(download.getString("hash-format"));
 					String thisHash = download.getString("hash");
 					if (thisFunc == HashFunction.MURMUR2_CF) {
-						thisHash = Murmur2CFMessageDigest.decToHex(thisHash);
+						thisHash = Murmur2CFHasher.decToHex(thisHash);
 					}
 					f.state = new FileState(thisFunc, thisHash, -1);
 					postState.put(path, f.state);

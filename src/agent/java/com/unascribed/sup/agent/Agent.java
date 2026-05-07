@@ -34,7 +34,6 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,7 +54,6 @@ import com.unascribed.sup.agent.PuppetHandler.AlertOption;
 import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
 import com.unascribed.sup.agent.auth.Authorizer;
 import com.unascribed.sup.agent.auth.Authorizer.AuthorizerSpec;
-import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.agent.pieces.MemoryCookieJar;
 import com.unascribed.sup.agent.pieces.QDIni;
 import com.unascribed.sup.agent.pieces.QDIni.QDIniException;
@@ -69,9 +67,10 @@ import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.AlertMessageType;
 import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.pieces.ExceptableRunnable;
-import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Resources;
+
+import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
 import okhttp3.OkHttpClient;
 import okhttp3.brotli.BrotliInterceptor;
@@ -424,10 +423,8 @@ public class Agent {
 				for (var specificDef : en.getValue()) {
 					locations.add(specificDef.source);
 				}
-				String fp = Bases.bytesToHex(
-								HashFunction.SHA2_256.createMessageDigest()
-									.digest(en.getKey().toByteArray())
-							).toUpperCase(Locale.ROOT).replaceAll("..(?!$)", "$0:");
+				String fp = StandardHashers.sha2_256().hash(en.getKey().toByteArray()).toHex()
+								.replaceAll("..(?!$)", "$0:");
 				var sj = new StringJoiner(", ");
 				for (var loc : locations) {
 					sj.add(loc);
