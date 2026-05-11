@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,6 +60,8 @@ import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
 import com.unascribed.sup.agent.data.HashFunction;
 import com.unascribed.sup.agent.pieces.Murmur2CFHasher;
 import com.unascribed.sup.agent.util.RequestHelper;
+import com.unascribed.sup.ann.NotNull;
+import com.unascribed.sup.ann.Nullable;
 import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.AlertMessageType;
 import com.unascribed.sup.data.FlavorChoice;
@@ -206,9 +209,9 @@ public class PackwizHandler extends AbstractFormatHandler {
 							flavors: for (Map.Entry<String, Object> en : unsup.getTable("flavor_groups").entrySet()) {
 								if (en.getValue() instanceof Toml group) {
 									String groupId = en.getKey();
-									var side = group.getString("side");
-									if (side != null && Agent.config().useEnvs() && !side.equals("both") && !side.equals(Agent.config().detectedEnv())) {
-										Log.info("Skipping flavor group "+groupId+" as it's not eligible for env "+Agent.config().detectedEnv());
+									var side = parseSide(group.getString("side"));
+									if (side != null && Agent.config().useEnvs() && !side.equals(Agent.config().detectedEnv())) {
+										Log.info("Skipping flavor group "+groupId+" as it's not eligible for env "+Agent.config().detectedEnv()+" (wants "+side+")");
 										continue;
 									}
 									var groupName = group.getString("name", groupId);
@@ -417,11 +420,11 @@ public class PackwizHandler extends AbstractFormatHandler {
 					String path = mf.path;
 					String hash = mf.hash;
 					Toml metafile = mf.toml;
-					String side = metafile.getString("side");
+					String side = parseSide(metafile.getString("side"));
 					String metafileDoublet = (func+":"+hash);
 					metafileState.put(path, metafileDoublet);
-					if (side != null && Agent.config().useEnvs() && !side.equals("both") && !side.equals(Agent.config().detectedEnv())) {
-						Log.info("Skipping "+path+" as it's not eligible for env "+Agent.config().detectedEnv());
+					if (side != null && Agent.config().useEnvs() && !side.equals(Agent.config().detectedEnv())) {
+						Log.info("Skipping "+path+" as it's not eligible for env "+Agent.config().detectedEnv()+" (wants "+side+")");
 						continue;
 					}
 					path = path.replace("\\", "/");
@@ -517,7 +520,9 @@ public class PackwizHandler extends AbstractFormatHandler {
 					if (nameFlavors != null) mfFlavors.addAll(nameFlavors);
 					Log.debug("Flavors for /"+mf.path+" ("+mf.name+"): "+mfFlavors);
 					if (!mfFlavors.isEmpty() && !Iterables.intersects(mfFlavors, ourFlavors)) {
-						Log.info("Skipping "+mf.target+" as it's not eligible for our selected flavors");
+						var sj = new StringJoiner(", ");
+						for (var f : mfFlavors) sj.add(f);
+						Log.info("Skipping "+mf.target+" as it's not eligible for our selected flavors (wants any of "+sj+")");
 						continue;
 					}
 					
@@ -619,7 +624,17 @@ public class PackwizHandler extends AbstractFormatHandler {
 		}
 	}
 	
-	static HashFunction parseFunc(String str) {
+	static @Nullable String parseSide(@Nullable String str) {
+		if (str == null) return null;
+		return switch (str) {
+			case "", "both" -> null;
+			case "client" -> "client";
+			case "server" -> "server";
+			default -> throw new IllegalArgumentException("Unknown packwiz size "+str);
+		};
+	}
+	
+	static HashFunction parseFunc(@NotNull String str) {
 		return switch (str) {
 			case "md5" -> HashFunction.MD5;
 			case "sha1" -> HashFunction.SHA1;

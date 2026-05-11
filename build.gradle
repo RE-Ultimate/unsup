@@ -324,6 +324,7 @@ jar {
 			'okio/': pfx+'okio/',
 			'org/brotli/dec/': pfx+'brotli/',
 			'uk/co/lucasweb/aws/v4/signer/': pfx+'awsv4/',
+			'com/playsawdust/chipper/toolbox/': pfx+'toolbox/',
 		]
 		
 		mapfile.text = ""
