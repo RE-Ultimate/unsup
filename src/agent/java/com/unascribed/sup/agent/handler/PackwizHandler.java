@@ -630,7 +630,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 			case "", "both" -> null;
 			case "client" -> "client";
 			case "server" -> "server";
-			default -> throw new IllegalArgumentException("Unknown packwiz size "+str);
+			default -> throw new IllegalArgumentException("Unknown packwiz side "+str);
 		};
 	}
 	
