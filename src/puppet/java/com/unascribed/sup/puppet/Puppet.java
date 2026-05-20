@@ -398,7 +398,11 @@ public class Puppet {
 	}
 
 	public static void log(String flavor, String msg) {
-		System.err.println(flavor+"|("+Thread.currentThread().getName()+")"+msg);
+		boolean first = true;
+		for (var line : msg.split("\n")) {
+			System.err.println(flavor+"|("+Thread.currentThread().getName()+")"+(first ? "" : "    ")+line);
+			first = false;
+		}
 	}
 
 	public static void log(String flavor, String msg, Throwable t) {

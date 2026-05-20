@@ -52,8 +52,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.Text;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 public class FlavorDialogWindow extends Window {
 
@@ -473,10 +475,10 @@ public class FlavorDialogWindow extends Window {
 				int subtarget = grp.isBoolean() ? -1 : preferKeyboard ? getSelectedIndex(grp) : subhovered;
 				String html;
 				if (subtarget == -1) {
-					html = makeMoreXMLy("<h1>"+grp.name()+"</h1>"+grp.description());
+					html = "<h1>"+grp.name()+"</h1>"+grp.description();
 				} else {
 					FlavorChoice choice = grp.choices().get(subtarget);
-					html = makeMoreXMLy("<h1>"+grp.name()+"</h1>"+grp.description()+"<h2>"+choice.name()+"</h2><br/>"+choice.description());
+					html = "<h1>"+grp.name()+"</h1>"+grp.description()+"<h2>"+choice.name()+"</h2><br/>"+choice.description();
 				}
 				
 				NodeDrawState state = new NodeDrawState();
@@ -593,6 +595,7 @@ public class FlavorDialogWindow extends Window {
 					nw.y += 16;
 					nw.baseX += 24;
 					nw.x = nw.baseX;
+					nw.maxWidth -= 24;
 					drawChildren(nw, node);
 					state.y = nw.y+32;
 					state.x = state.baseX;
@@ -644,9 +647,9 @@ public class FlavorDialogWindow extends Window {
 		}
 	}
 
-	private static final Pattern NEWLINEY = Pattern.compile("(\n|<br\\s+>)");
+	private static final Pattern NEWLINEY = Pattern.compile("(\n|<[Bb][Rr]\\s*>)");
 	
-	private String makeMoreXMLy(String str) {
+	private static String makeMoreXMLy(String str) {
 		return "<body>"+NEWLINEY.matcher(str).replaceAll("<br/>")+"</body>";
 	}
 	
@@ -656,6 +659,14 @@ public class FlavorDialogWindow extends Window {
 			fct.setCoalescing(true);
 			fct.setIgnoringComments(true);
 			docbldr = fct.newDocumentBuilder();
+			docbldr.setErrorHandler(new ErrorHandler() {
+				@Override
+				public void warning(SAXParseException exception) throws SAXException {}
+				@Override
+				public void error(SAXParseException exception) throws SAXException {}
+				@Override
+				public void fatalError(SAXParseException exception) throws SAXException { throw exception; }
+			});
 		} catch (ParserConfigurationException e) {
 			throw new AssertionError(e);
 		}
@@ -663,8 +674,35 @@ public class FlavorDialogWindow extends Window {
 	
 	private static Document parseXHTML(String html) {
 		try {
+			html = makeMoreXMLy(html);
 			return docbldr.parse(new InputSource(new StringReader(html)));
+		} catch (SAXParseException e) {
+			Puppet.log("WARN", "Failed to parse HTML: "+e.getMessage()+" (at "+e.getLineNumber()+":"+e.getColumnNumber()+")");
+			String[] lines = html.split("\n");
+			var sb = new StringBuilder();
+			for (int i = 0; i < lines.length; i++) {
+				String num = Integer.toString(i+1);
+				sb.append(num);
+				sb.append("]");
+				for (int j = num.length(); j < 5; j++) {
+					sb.append(" ");
+				}
+				sb.append(lines[i]);
+				Puppet.log("WARN", sb.toString());
+				sb.setLength(0);
+				if (i == e.getLineNumber()-1) {
+					sb.append(" ]    ");
+					for (int j = 1; j < e.getColumnNumber(); j++) {
+						sb.append("=");
+					}
+					sb.append("^ HERE");
+					Puppet.log("WARN", sb.toString());
+				}
+				sb.setLength(0);
+			}
+			return docbldr.newDocument();
 		} catch (SAXException e) {
+			Puppet.log("WARN", "Failed to parse HTML - original HTML:\n"+html, e);
 			return docbldr.newDocument();
 		} catch (IOException e) {
 			throw new AssertionError(e);
