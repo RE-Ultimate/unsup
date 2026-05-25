@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.SocketTimeoutException;
@@ -423,7 +424,7 @@ public class RequestHelper {
 	
 	public static Toml loadToml(URI src, int sizeLimit, URI sigUrl) throws IOException {
 		try {
-			return new Toml().read(new ByteArrayInputStream(loadAndVerify(src, sizeLimit, sigUrl)));
+			return new Toml().read(new InputStreamReader(new ByteArrayInputStream(loadAndVerify(src, sizeLimit, sigUrl)), StandardCharsets.UTF_8));
 		} catch (IllegalStateException e) {
 			throw new IOException("Failed to parse "+src+" as TOML: "+e.getMessage());
 		}
@@ -449,7 +450,7 @@ public class RequestHelper {
 			}
 			throw new IOException(msg);
 		}
-		return new Toml().read(new ByteArrayInputStream(data));
+		return new Toml().read(new InputStreamReader(new ByteArrayInputStream(data), StandardCharsets.UTF_8));
 	}
 
 	public interface Progressor {
