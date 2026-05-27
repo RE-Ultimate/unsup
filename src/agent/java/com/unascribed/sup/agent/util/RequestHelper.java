@@ -124,7 +124,7 @@ public class RequestHelper {
 				if (key != null) {
 					try {
 						if (sigResp == null) {
-							sigResp = downloadToMemory(sigUrl, 512);
+							sigResp = downloadToMemory(sigUrl, 8192);
 						}
 						if (key.verify(resp, sigResp)) {
 							anyVerified = true;

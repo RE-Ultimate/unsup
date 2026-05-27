@@ -195,6 +195,7 @@ repositories {
 	mavenCentral()
 	maven { url 'https://repo.sleeping.town' }
 	maven { url 'https://central.sonatype.com/repository/maven-snapshots' }
+	maven { url 'https://maven.is-quite.gay' }
 	exclusiveContent {
 		forRepository {
 			flatDir { dirs '.gradle/transformed' }
@@ -249,6 +250,8 @@ dependencies {
 
 	trans 'com.grack:nanojson:1.10'
 	shade 'net.i2p.crypto:eddsa:0.3.0'
+	
+	shadeCis 'link.e4mc:covenant:0.1.0'
 	
 	trans 'com.squareup.okhttp3:okhttp:4.12.0'
 	
@@ -325,6 +328,7 @@ jar {
 			'org/brotli/dec/': pfx+'brotli/',
 			'uk/co/lucasweb/aws/v4/signer/': pfx+'awsv4/',
 			'com/playsawdust/chipper/toolbox/': pfx+'toolbox/',
+			'link/e4mc/covenant/': pfx+'covenant/',
 		]
 		
 		mapfile.text = ""

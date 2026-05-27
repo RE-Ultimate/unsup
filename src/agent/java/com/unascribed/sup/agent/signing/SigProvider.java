@@ -19,6 +19,9 @@
 
 package com.unascribed.sup.agent.signing;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
@@ -26,9 +29,12 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 
+import com.unascribed.sup.util.Resources;
+import link.e4mc.covenant.policy.Policy;
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
 import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
+import org.brotli.dec.BrotliInputStream;
 
 public interface SigProvider {
 
@@ -46,8 +52,26 @@ public interface SigProvider {
 			} else {
 				throw new IllegalArgumentException("Unknown signify key format");
 			}
-		} else {
-			throw new IllegalArgumentException("Unknown key kind, expected ed25519 or signify");
+		} else if (line.startsWith("sigsum ")) {
+			byte[] pubkey = Base64.getDecoder().decode(line.substring(7, 51));
+			if (line.charAt(51) != ' ') {
+				throw new IllegalArgumentException("Unknown sigsum key format");
+			}
+			String policySpec = line.substring(52);
+			InputStream stream = Resources.open("assets/sigsum-policies/" + policySpec + ".builtin-policy.br");
+			if (stream == null) {
+				stream = new ByteArrayInputStream(Base64.getDecoder().decode(policySpec));
+			}
+			try (BrotliInputStream bis = new BrotliInputStream(stream)) {
+				byte[] buf = new byte[16384];
+				int len = bis.read(buf);
+				Policy policy = Policy.parse(Arrays.copyOf(buf, len));
+				return new SigsumProvider(policy, pubkey);
+			} catch (IOException | IllegalArgumentException e) {
+				throw new IllegalArgumentException("Failed to load sigsum policy");
+            }
+        } else {
+			throw new IllegalArgumentException("Unknown key kind, expected ed25519, signify, or sigsum");
 		}
 	}
 	
