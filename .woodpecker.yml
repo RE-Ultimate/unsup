@@ -62,13 +62,16 @@ steps:
       from_secret: maven_username
     ORG_GRADLE_PROJECT_SleepingTownPassword:
       from_secret: maven_password
-    FORGEJO_KEY:
-      from_secret: forgejo_key
   depends_on: [clone, restore-cache]
   commands:
-  - gradle --dependency-verification strict clean build publish -Punsup.ci --info
-  - gradle --stop
-  - rm -rf .gradle-user/daemon
+  - gradle --no-daemon --dependency-verification strict clean build publish -Punsup.ci --info
+- name: publish-snapshot
+  image: gradle:8.14-jdk17
+  environment:
+    FORGEJO_KEY:
+      from_secret: forgejo_key
+  depends_on: [build]
+  commands:
   - chmod +x ./update-snapshot-release.sh
   - ./update-snapshot-release.sh
 - name: update-cache
