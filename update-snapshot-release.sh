@@ -38,7 +38,7 @@ lasttag=$(curl -s "$apibase/releases?draft=false&page=1&limit=1" |jq -r '.[0].ta
 echo 'OK'
 
 echo -n 'Create release... '
-resp=$(curl --fail-with-body -s -X POST -H 'Content-Type: application/json' -H "$auth" $apibase/releases --data-raw $(jq --raw-input --arg latest $latest --arg commit ${CI_COMMIT_SHA-trunk} '
+resp=$(curl --fail-with-body -s -X POST -H 'Content-Type: application/json' -H "$auth" $apibase/releases --data-raw $(jq --raw-input --slurp --arg latest $latest --arg commit ${CI_COMMIT_SHA-trunk} '
 {
 	name: "v\($latest)",
 	target_commitish: $commit,
