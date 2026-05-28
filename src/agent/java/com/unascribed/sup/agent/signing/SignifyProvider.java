@@ -25,22 +25,33 @@ import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.Base64;
 
+import com.unascribed.sup.ann.NotNull;
 import com.unascribed.sup.util.Bases;
 
+import com.playsawdust.chipper.toolbox.io.Bytes;
+
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
+import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable;
+import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
-public class SignifyProvider implements SigProvider {
+public class SignifyProvider extends AbstractSigProvider {
 
-	static final byte[] Ed = { 'E', 'd' };
+	private static final byte[] Ed = { 'E', 'd' };
 	
 	private final long keyId;
 	private final SigProvider inner;
 	private final byte[] expectedFormat;
 	
-	public SignifyProvider(long keyId, EdDSAPublicKey key) throws InvalidKeyException {
+	public SignifyProvider(String origin, long keyId, EdDSAPublicKey key) throws InvalidKeyException {
+		super(origin);
 		this.expectedFormat = Ed;
 		this.keyId = keyId;
-		this.inner = new RawEdDSAProvider(key);
+		this.inner = new RawEdDSAProvider(origin+" (inner provider)", key);
+	}
+	
+	@Override
+	public int maximumSignatureLength() {
+		return 512;
 	}
 	
 	@Override
@@ -49,33 +60,32 @@ public class SignifyProvider implements SigProvider {
 		if (!checkFormat(signature, expectedFormat)) {
 			throw new SignatureException("Signature is not in a known format");
 		}
-		long keyId = toLong(signature, expectedFormat.length);
+		long keyId = Bytes.getLong(signature, expectedFormat.length);
 		if (keyId != this.keyId) {
 			throw new SignatureException("Data is signed with the wrong key (expected "+Bases.longToHex(this.keyId)+" but got "+Bases.longToHex(this.keyId)+")");
 		}
 		signature = Arrays.copyOfRange(signature, expectedFormat.length+8, signature.length);
 		return inner.verify(data, signature);
 	}
-
-	public static long toLong(byte[] data, int ofs) {
-		return
-			  (data[ofs+0] & 0xFFL) << 56
-			| (data[ofs+1] & 0xFFL) << 48
-			| (data[ofs+2] & 0xFFL) << 40
-			| (data[ofs+3] & 0xFFL) << 32
-			| (data[ofs+4] & 0xFFL) << 24
-			| (data[ofs+5] & 0xFFL) << 16
-			| (data[ofs+6] & 0xFFL) << 8
-			| (data[ofs+7] & 0xFFL);
-	}
 	
-	static boolean checkFormat(byte[] data, byte[] format) {
+	private static boolean checkFormat(byte[] data, byte[] format) {
 		for (int i = 0; i < format.length; i++) {
 			if (i >= data.length || data[i] != format[i]) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	public static SignifyProvider parse(String origin, @NotNull String key) throws InvalidKeyException {
+		byte[] data = Base64.getDecoder().decode(key);
+		if (checkFormat(data, Ed)) {
+			return new SignifyProvider(origin, Bytes.getLong(data, 2),
+					new EdDSAPublicKey(new EdDSAPublicKeySpec(Arrays.copyOfRange(data, 10, data.length),
+							EdDSANamedCurveTable.ED_25519_CURVE_SPEC)));
+		} else {
+			throw new IllegalArgumentException("Unknown signify key format - expected Ed, got "+new String(data, 0, 2, StandardCharsets.ISO_8859_1));
+		}
 	}
 	
 }

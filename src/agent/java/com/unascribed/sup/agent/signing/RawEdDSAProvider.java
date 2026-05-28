@@ -22,15 +22,21 @@ package com.unascribed.sup.agent.signing;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+
+import com.unascribed.sup.ann.NotNull;
 
 import net.i2p.crypto.eddsa.EdDSAEngine;
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
 
-public class RawEdDSAProvider implements SigProvider {
+public class RawEdDSAProvider extends AbstractSigProvider {
 
 	private final ThreadLocal<EdDSAEngine> engine;
 	
-	public RawEdDSAProvider(EdDSAPublicKey key) throws InvalidKeyException {
+	public RawEdDSAProvider(String origin, EdDSAPublicKey key) throws InvalidKeyException {
+		super(origin);
 		new EdDSAEngine().initVerify(key);
 		this.engine = ThreadLocal.withInitial(() -> {
 			EdDSAEngine n = new EdDSAEngine();
@@ -43,10 +49,19 @@ public class RawEdDSAProvider implements SigProvider {
 			return n;
 		});
 	}
+	
+	@Override
+	public int maximumSignatureLength() {
+		return 64;
+	}
 
 	@Override
 	public boolean verify(byte[] data, byte[] signature) throws SignatureException {
 		return engine.get().verifyOneShot(data, signature);
+	}
+
+	public static RawEdDSAProvider parse(String origin, @NotNull String key) throws InvalidKeyException, InvalidKeySpecException {
+		return new RawEdDSAProvider(origin, new EdDSAPublicKey(new X509EncodedKeySpec(Base64.getDecoder().decode(key))));
 	}
 	
 }

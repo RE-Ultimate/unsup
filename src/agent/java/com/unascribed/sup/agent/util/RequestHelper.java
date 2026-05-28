@@ -112,7 +112,7 @@ public class RequestHelper {
 		return loadAndVerify(src, sizeLimit, sigUrl, Agent.config().packSig(), Agent.config().altPackSig());
 	}
 	
-	public static byte[] loadAndVerify(URI src, int sizeLimit, URI sigUrl, SigProvider... keys) throws IOException {
+	public static byte[] loadAndVerify(URI src, int sizeLimit, URI sigUrl, @Nullable SigProvider... keys) throws IOException {
 		byte[] resp = downloadToMemory(src, sizeLimit);
 		if (resp == null) {
 			throw new IOException(src+" is larger than "+(sizeLimit/K)+"K, refusing to continue downloading");
@@ -120,19 +120,23 @@ public class RequestHelper {
 		if (sigUrl != null) {
 			boolean anyVerified = false;
 			byte[] sigResp = null;
-			for (SigProvider key : keys) {
-				if (key != null) {
-					try {
-						if (sigResp == null) {
-							sigResp = downloadToMemory(sigUrl, 8192);
-						}
-						if (key.verify(resp, sigResp)) {
-							anyVerified = true;
-							Log.debug("Signature for "+src+" (retrieved from "+sigUrl+") is valid");
-						}
-					} catch (Throwable t) {
-						throw new IOException("Failed to validate signature for "+src, t);
+			int maxLen = 0;
+			for (var key : keys) {
+				if (key == null) continue;
+				maxLen = Math.max(key.maximumSignatureLength(), maxLen);
+			}
+			for (var key : keys) {
+				if (key == null) continue;
+				try {
+					if (sigResp == null) {
+						sigResp = downloadToMemory(sigUrl, maxLen);
 					}
+					if (key.verify(resp, sigResp)) {
+						anyVerified = true;
+						Log.debug("Signature for "+src+" (retrieved from "+sigUrl+") is valid with key "+key.origin());
+					}
+				} catch (Throwable t) {
+					throw new IOException("Failed to validate signature for "+src, t);
 				}
 			}
 			if (sigResp != null && !anyVerified) {

@@ -65,6 +65,7 @@ import com.unascribed.sup.ann.NotNull;
 import com.unascribed.sup.bootstrap.Bootstrapper;
 import com.unascribed.sup.bootstrap.Util;
 import com.unascribed.sup.data.AlertMessageType;
+import com.unascribed.sup.data.SysPropDefs;
 import com.unascribed.sup.data.SysProps;
 import com.unascribed.sup.pieces.ExceptableRunnable;
 import com.unascribed.sup.util.Multimap;
@@ -91,7 +92,7 @@ public class Agent {
 	private static List<ExceptableRunnable> cleanup = new ArrayList<>();
 	private static @NotNull Config config = new Config();
 	
-	public static final SigProvider unsupSig = SigProvider.of("signify RWTSwM40VCzVER3YWt55m4Fvsg0sjZLEICikuU3cD91gR/2lii/jk67B");
+	public static final SigProvider unsupSig = SigProvider.of("<built-in>", "signify RWTSwM40VCzVER3YWt55m4Fvsg0sjZLEICikuU3cD91gR/2lii/jk67B");
 	
 	// read by the Unsup class when it loads
 	// be careful not to load that class until this is all initialized
@@ -310,10 +311,12 @@ public class Agent {
 					Log.error("Bootstrap error: failed to parse URL! Exiting.", e);
 					throw ExitCode.CONFIG_ERROR.exit();
 				}
-				Optional<SigProvider> key = SysProps.BOOTSTRAP_KEY.map(s -> s.replaceFirst("^([^ %]+)%", "$1 ")).map(Util.faulty(SigProvider::parse, e -> {
-					Log.error("Bootstrap error: failed to parse key! Exiting.", e);
-					throw ExitCode.CONFIG_ERROR.exit();
-				}));
+				Optional<SigProvider> key = SysProps.BOOTSTRAP_KEY.map(s -> s.replaceFirst("^([^ %]+)%", "$1 "))
+						.map(Util.faulty(s -> SigProvider.parse("-D"+SysPropDefs.BOOTSTRAP_KEY, s),
+							e -> {
+								Log.error("Bootstrap error: failed to parse key! Exiting.", e);
+								throw ExitCode.CONFIG_ERROR.exit();
+							}));
 				Optional<AuthorizerSpec> auth;
 				if (SysProps.BOOTSTRAP_AUTH.isPresent()) {
 					if (uri.getRawUserInfo() != null) {

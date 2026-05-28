@@ -416,7 +416,7 @@ public record Config(
 	private static @Nullable SigProvider parsePackSig(QDIni config, String key) {
 		if (config.containsKey(key)) {
 			try {
-				return SigProvider.parse(config.get(key));
+				return SigProvider.parse("config."+key, config.get(key));
 			} catch (Throwable t) {
 				Log.error("Config file error: "+key+" is not valid at "+config.getBlame(key)+"! Exiting.", t);
 				throw ExitCode.CONFIG_ERROR.exit();
