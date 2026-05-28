@@ -1,7 +1,7 @@
 #!/bin/bash -e
 #
 # This file is part of unsup.
-# Copyright © 2025 Exa Skye
+# Copyright © 2025-2026 Exa Skye
 # https://git.sleeping.town/exa/unsup
 #
 # unsup is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@ latest=$(cat ci-version.txt)
 latestu=$(echo "$latest" | sed 's/+/%2B/g')
 apibase='https://git.sleeping.town/api/v1/repos/exa/unsup'
 auth="Authorization: token $FORGEJO_KEY"
-curl -s -X DELETE -H "$auth" $apibase/releases/tags/SNAPSHOT >/dev/null
-curl -s -X DELETE -H "$auth" $apibase/tags/SNAPSHOT >/dev/null
+curl -s -X DELETE -H "$auth" $apibase/releases/tags/SNAPSHOT || true >/dev/null
+curl -s -X DELETE -H "$auth" $apibase/tags/SNAPSHOT || true >/dev/null
 
 lasttag=$(curl -s "$apibase/releases?draft=false&page=1&limit=1" |jq -r '.[0].tag_name')
 

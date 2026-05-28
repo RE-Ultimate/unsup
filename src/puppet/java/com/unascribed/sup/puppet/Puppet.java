@@ -1,6 +1,6 @@
 /*
  * This file is part of unsup.
- * Copyright © 2020-2025 Exa Skye
+ * Copyright © 2020-2026 Exa Skye
  * https://git.sleeping.town/exa/unsup
  *
  * unsup is free software; you can redistribute it and/or modify it

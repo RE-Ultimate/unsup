@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     This file is part of unsup.
-    Copyright © 2025 Exa Skye
+    Copyright © 2025-2026 Exa Skye, Skye
     https://git.sleeping.town/exa/unsup
 
     unsup is free software; you can redistribute it and/or modify it
@@ -17,6 +17,7 @@
     You should have received a copy of the GNU Lesser General Public
     License along with unsup; if not, see <https://www.gnu.org/licenses/>.
 -->
+
 <verification-metadata xmlns="https://schema.gradle.org/dependency-verification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
    <configuration>
       <verify-metadata>true</verify-metadata>

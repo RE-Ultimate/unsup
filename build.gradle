@@ -1,6 +1,6 @@
 /*
  * This file is part of unsup.
- * Copyright © 2020-2025 Exa Skye
+ * Copyright © 2020-2026 Exa Skye, Mika Hensel, Skye
  * https://git.sleeping.town/exa/unsup
  *
  * unsup is free software; you can redistribute it and/or modify it
@@ -141,7 +141,7 @@ task computeFileDates {
 					def years = ['sh', '-c', "git log --grep '\\[no attribution\\]' --invert-grep --format=%cd --date=iso-strict --follow '${it.path}' |cut -d- -f1 |sort -nu"].execute().text.trim().split("\n").collect { Integer.parseInt(it) }
 					def authors = ['sh', '-c', "git log --grep '\\[no attribution\\]' --invert-grep --format=%aN --follow '${it.path}' |grep -v '^\$' |grep -v 'Sleeping Town Weblate' |sort -u"].execute().text.trim().split("\n").toList()
 					authors.addAll(uncreditedAuthors[it.path] ?: [])
-					if (authors.remove('Una Kearney') | authors.remove('Una') | authors.remove('Kryn')) {
+					if (authors.remove('Una Kearney') | authors.remove('Una') | authors.remove('Kryn') | authors.remove('Kaile')) {
 						authors.add(0, 'Exa Skye')
 					}
 					
