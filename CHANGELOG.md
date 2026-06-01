@@ -8,3 +8,11 @@
 * Added support for `sigsum`-signed manifests (thanks, skyevg! [#67](https://git.sleeping.town/exa/unsup/pulls/67))
 * Now uses our Toolbox library internally
 * Which key validated a signature is now printed
+* **Removed OkHttp in favor of a Java HttpClient backport**
+  * Currently missing features, which will be added before a proper release:
+    * Insecure hosts
+    * Authorizers
+    * DNS-over-HTTPS (might get dropped)
+  * This will certainly break things, but we're stuck on an old version of OkHttp to avoid LLM slop and it is a very frustrating dependency due to being written in Kotlin and not being designed to be cleaned up
+  * This removes the Kotlin stdlib from unsup and makes the jar smaller, despite pulling in a massive chunk of Java code
+  * *Please test this!*
