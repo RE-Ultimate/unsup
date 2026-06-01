@@ -31,7 +31,10 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSession;
 
+import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.ann.NotNull;
+
+import com.playsawdust.chipper.toolbox.collect.ro.ReadOnly;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -70,7 +73,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javahttpclient.internal.common.DebugLogger.LoggerConfig;
@@ -173,7 +175,7 @@ public final class Utils {
 
     private static Set<String> getDisallowedHeaders() {
         Set<String> headers = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        headers.addAll(Set.of("connection", "content-length", "expect", "host", "upgrade"));
+        headers.addAll(Arrays.asList("connection", "content-length", "expect", "host", "upgrade"));
 
         String v = getNetProperty("jdk.httpclient.allowRestrictedHeaders");
         if (v != null) {
@@ -195,7 +197,7 @@ public final class Utils {
 
     private static Set<String> getDisallowedRedirectHeaders() {
         Set<String> headers = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        headers.addAll(Set.of("Authorization", "Cookie", "Origin", "Referer", "Host"));
+        headers.addAll(Arrays.asList("Authorization", "Cookie", "Origin", "Referer", "Host"));
 
         return Collections.unmodifiableSet(headers);
     }
@@ -219,6 +221,7 @@ public final class Utils {
                 return true;
             };
 
+    @Desugar
     public record ProxyHeaders(HttpHeaders userHeaders, HttpHeaders systemHeaders) {}
 
     public static BiPredicate<String, String> PROXY_TUNNEL_RESTRICTED()  {
@@ -240,17 +243,17 @@ public final class Utils {
         String proxyAuthTunnelDisabled =
                 getNetProperty("jdk.http.auth.tunneling.disabledSchemes");
         PROXY_AUTH_DISABLED_SCHEMES =
-                proxyAuthDisabled == null ? Set.of() :
+                proxyAuthDisabled == null ? Collections.emptySet() :
                         Stream.of(proxyAuthDisabled.split(","))
                                 .map(String::trim)
                                 .filter((s) -> !s.isEmpty())
-                                .collect(Collectors.toUnmodifiableSet());
+                                .collect(ReadOnly.setCollector());
         PROXY_AUTH_TUNNEL_DISABLED_SCHEMES =
-                proxyAuthTunnelDisabled == null ? Set.of() :
+                proxyAuthTunnelDisabled == null ? Collections.emptySet() :
                         Stream.of(proxyAuthTunnelDisabled.split(","))
                                 .map(String::trim)
                                 .filter((s) -> !s.isEmpty())
-                                .collect(Collectors.toUnmodifiableSet());
+                                .collect(ReadOnly.setCollector());
     }
 
     public static <T> CompletableFuture<T> wrapForDebug(Logger logger, String name, CompletableFuture<T> cf) {
@@ -513,6 +516,7 @@ public final class Utils {
         return !token.isEmpty();
     }
 
+    @Desugar
     public record ServerName (String name, boolean isLiteral) {
     }
 
@@ -608,8 +612,8 @@ public final class Utils {
         p1.setAlgorithmConstraints(p.getAlgorithmConstraints());
         p1.setCipherSuites(p.getCipherSuites());
         // JDK 8 EXCL START
-        p1.setEnableRetransmissions(p.getEnableRetransmissions());
-        p1.setMaximumPacketSize(p.getMaximumPacketSize());
+//        p1.setEnableRetransmissions(p.getEnableRetransmissions());
+//        p1.setMaximumPacketSize(p.getMaximumPacketSize());
         // JDK 8 EXCL END
         p1.setEndpointIdentificationAlgorithm(p.getEndpointIdentificationAlgorithm());
         if (p.getNeedClientAuth()) {
@@ -820,7 +824,7 @@ public final class Utils {
     // Put all these static 'empty' singletons here
     public static final ByteBuffer EMPTY_BYTEBUFFER = ByteBuffer.allocate(0);
     public static final ByteBuffer[] EMPTY_BB_ARRAY = new ByteBuffer[0];
-    public static final List<ByteBuffer> EMPTY_BB_LIST = List.of();
+    public static final List<ByteBuffer> EMPTY_BB_LIST = Collections.emptyList();
 
     /**
      * Returns a slice of size {@code amount} from the given buffer. If the

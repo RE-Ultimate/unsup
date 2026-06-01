@@ -124,7 +124,7 @@ public class HttpRequestImpl extends HttpRequest {
             checkTimeout(timeout);
             this.systemHeadersBuilder = new HttpHeadersBuilder();
         }
-        if (userHeaders.firstValue("User-Agent").isEmpty()) {
+        if (!userHeaders.firstValue("User-Agent").isPresent()) {
             this.systemHeadersBuilder.setHeader("User-Agent", USER_AGENT);
         }
         this.uri = requestURI;
@@ -188,7 +188,7 @@ public class HttpRequestImpl extends HttpRequest {
         this.userHeaders = userHeaders;
         this.isWebSocket = other.isWebSocket;
         this.systemHeadersBuilder = new HttpHeadersBuilder();
-        if (userHeaders.firstValue("User-Agent").isEmpty()) {
+        if (!userHeaders.firstValue("User-Agent").isPresent()) {
             this.systemHeadersBuilder.setHeader("User-Agent", USER_AGENT);
         }
         this.uri = uri;

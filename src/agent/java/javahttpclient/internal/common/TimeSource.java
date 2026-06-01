@@ -25,11 +25,8 @@
 package javahttpclient.internal.common;
 
 import java.time.Instant;
-import java.time.InstantSource;
 
 import com.unascribed.sup.ann.NotNull;
-
-import javahttpclient.internal.Stream;
 
 /**
  * A {@link TimeLine} based on {@link System#nanoTime()} for the

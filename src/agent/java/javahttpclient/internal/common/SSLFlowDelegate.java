@@ -1128,7 +1128,6 @@ public class SSLFlowDelegate {
                 }
                 break;
             case NEED_UNWRAP:
-            case NEED_UNWRAP_AGAIN:
                 // do nothing else
                 // receiving-side data will trigger unwrap
                 if (caller == WRITER) {

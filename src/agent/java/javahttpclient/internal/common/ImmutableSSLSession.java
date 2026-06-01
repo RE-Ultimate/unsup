@@ -29,6 +29,7 @@ import java.security.Principal;
 import java.util.List;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSessionContext;
+import javax.security.cert.X509Certificate;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SNIServerName;
 
@@ -122,5 +123,9 @@ public class ImmutableSSLSession implements SSLSession {
 
     public int getApplicationBufferSize() {
         return delegate.getApplicationBufferSize();
+    }
+    
+    public X509Certificate[] getPeerCertificateChain() throws SSLPeerUnverifiedException {
+    	return delegate.getPeerCertificateChain();
     }
 }

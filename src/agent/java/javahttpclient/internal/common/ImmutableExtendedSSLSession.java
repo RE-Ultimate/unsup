@@ -29,6 +29,7 @@ import java.security.Principal;
 import java.util.List;
 import javax.net.ssl.ExtendedSSLSession;
 import javax.net.ssl.SSLSessionContext;
+import javax.security.cert.X509Certificate;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SNIServerName;
 
@@ -134,5 +135,9 @@ public class ImmutableExtendedSSLSession extends ExtendedSSLSession {
 
     public List<SNIServerName> getRequestedServerNames()  {
         return delegate.getRequestedServerNames();
+    }
+    
+    public X509Certificate[] getPeerCertificateChain() throws SSLPeerUnverifiedException {
+    	return delegate.getPeerCertificateChain();
     }
 }

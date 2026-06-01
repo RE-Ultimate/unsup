@@ -82,7 +82,6 @@ public final class MinimalFuture<T> extends CompletableFuture<T> {
         this.cancelable = cancelable;
     }
 
-    @Override
     public <U> MinimalFuture<U> newIncompleteFuture() {
         return new MinimalFuture<>(cancelable);
     }

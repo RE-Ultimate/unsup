@@ -33,6 +33,9 @@ import javahttpclient.HttpResponse.BodySubscriber;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+
+import com.github.bsideup.jabel.Desugar;
+
 import javahttpclient.flow.Flow.Subscription;
 
 import static java.util.Objects.requireNonNull;
@@ -56,6 +59,7 @@ public final class LimitingSubscriber<T> implements TrustedSubscriber<T> {
 
         State TERMINATED = new State() {};
 
+        @Desugar
         record Subscribed(Subscription subscription) implements State {}
 
     }

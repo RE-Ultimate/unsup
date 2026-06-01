@@ -29,6 +29,7 @@ import static javahttpclient.internal.common.Utils.ServerName;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -171,13 +172,13 @@ abstract class AbstractAsyncSSLConnection extends HttpConnection
         if (serverName != null && !serverName.isLiteral()) {
             final String name = serverName.name();
             if (name != null && !name.isEmpty()) {
-                return List.of(new SNIHostName(name));
+                return Collections.singletonList(new SNIHostName(name));
             }
         }
         // fallback on any SNIServerName(s) configured through HttpClient.sslParameters()
         final SSLParameters clientSSLParams = client.sslParameters();
         final List<SNIServerName> clientConfigured = clientSSLParams.getServerNames();
-        return clientConfigured != null ? clientConfigured : List.of();
+        return clientConfigured != null ? clientConfigured : Collections.emptyList();
     }
 
     private static SSLEngine createEngine(SSLContext context, String peerHost, int port,

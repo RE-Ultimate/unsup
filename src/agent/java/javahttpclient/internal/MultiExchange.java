@@ -104,13 +104,6 @@ class MultiExchange<T> implements Cancelable {
     AtomicReference<CancellationException> interrupted = new AtomicReference<>();
     final PushGroup<T> pushGroup;
 
-    /**
-     * Filter fields. These are attached as required by filters
-     * and only used by the filter implementations. This could be
-     * generalised into Objects that are passed explicitly to the filters
-     * (one per MultiExchange object, and one per Exchange object possibly)
-     */
-    volatile AuthenticationFilter.AuthInfo serverauth, proxyauth;
     // RedirectHandler
     volatile int numberOfRedirects = 0;
 
@@ -136,7 +129,7 @@ class MultiExchange<T> implements Cancelable {
 
         Duration getRemaining() {
             long now = System.nanoTime();
-            long previous = startTime.compareAndExchange(0, now);
+            long previous = startTime.compareAndSet(0, now) ? now : startTime.get();
             if (previous == 0 || max.isZero()) return max;
             Duration remaining = max.minus(Duration.ofNanos(now - previous));
             assert remaining.compareTo(max) <= 0;
@@ -373,7 +366,13 @@ class MultiExchange<T> implements Cancelable {
                                     new HttpResponseImpl<>(r.request(), r, this.response, body, exch);
                                 return this.response;
                             });
-                    }).exceptionallyCompose(this::whenCancelled);
+                    }).handle((res, err) -> {
+                    	if (err != null) {
+                    		return whenCancelled(err);
+                    	} else {
+                    		return CompletableFuture.completedFuture(res);
+                    	}
+                    }).thenCompose(f -> f);
     }
 
     // returns a CancellationExcpetion that wraps the given cause

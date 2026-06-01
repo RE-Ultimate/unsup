@@ -33,6 +33,7 @@ import java.net.ProtocolException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +54,7 @@ import java.util.function.Supplier;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 
+import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.ann.NotNull;
 
 import javahttpclient.HttpClient;
@@ -395,6 +397,7 @@ class Http2Connection  {
     private final Decoder hpackIn;
     final SettingsFrame clientSettings;
     private volatile SettingsFrame serverSettings;
+    @Desugar
     private record PushContinuationState(PushPromiseDecoder pushContDecoder, PushPromiseFrame pushContFrame) {}
     private volatile PushContinuationState pushContinuationState;
     private final String key; // for HttpClientImpl.connections map
@@ -1478,7 +1481,7 @@ class Http2Connection  {
         Log.logFrames(sf, "OUT");
         // send preface bytes and SettingsFrame together
         HttpPublisher publisher = publisher();
-        publisher.enqueueUnordered(List.of(buf));
+        publisher.enqueueUnordered(Collections.singletonList(buf));
         publisher.signalEnqueued();
         // mark preface sent.
         framesController.markPrefaceSent();
@@ -1510,7 +1513,7 @@ class Http2Connection  {
         if (debug.on())
             debug.log("Triggering processing of buffered data"
                       + " after sending connection preface");
-        subscriber.onNext(List.of(EMPTY_TRIGGER));
+        subscriber.onNext(Collections.singletonList(EMPTY_TRIGGER));
     }
 
     /**

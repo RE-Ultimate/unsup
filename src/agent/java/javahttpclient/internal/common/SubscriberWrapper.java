@@ -27,6 +27,7 @@ package javahttpclient.internal.common;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +36,8 @@ import javahttpclient.flow.Flow;
 import javahttpclient.flow.Flow.Subscriber;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import com.unascribed.sup.ann.NotNull;
 
 /**
  * A wrapper for a Flow.Subscriber. This wrapper delivers data to the wrapped
@@ -195,7 +198,7 @@ public abstract class SubscriberWrapper
     public void outgoing(ByteBuffer buffer, boolean complete) {
         Objects.requireNonNull(buffer);
         assert !complete || !buffer.hasRemaining();
-        outgoing(List.of(buffer), complete);
+        outgoing(Collections.singletonList(buffer), complete);
     }
 
     /**
@@ -455,7 +458,7 @@ public abstract class SubscriberWrapper
         if (upstreamSubscription == null) {
             throw new IllegalStateException("can't add data before upstream subscriber subscribes");
         }
-        incomingCaller(List.of(l), false);
+        incomingCaller(Collections.singletonList(l), false);
     }
 
     void checkCompletion() {

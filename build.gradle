@@ -401,51 +401,6 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	verbose
 }
 
-task extractPublicSuffix(type: Copy) {
-	inputs.files configurations.shade.resolve()
-	outputs.dir 'build/tmp/publicsuffix'
-	configurations.shade.resolve().each { f ->
-		from zipTree(f)
-	}
-	
-	include '**/publicsuffixes.gz'
-	includeEmptyDirs false
-	
-	into 'build/tmp/publicsuffix'
-}
-
-task popPublicSuffix {
-	def inFile = file('build/tmp/publicsuffix/okhttp3/internal/publicsuffix/publicsuffixes.gz')
-	def outFile = file('build/tmp/publicsuffix/okhttp3/internal/publicsuffix/publicsuffixes')
-	inputs.file(inFile)
-	outputs.file(outFile)
-
-	dependsOn extractPublicSuffix
-
-	doLast {
-		outFile.withOutputStream { out ->
-			inFile.withInputStream { raw ->
-				out << new java.util.zip.GZIPInputStream(raw)
-			}
-		}
-	}
-}
-
-task brotliPublicSuffix(type: Exec) {
-	def in = 'build/tmp/publicsuffix/okhttp3/internal/publicsuffix/publicsuffixes'
-	inputs.file(in)
-	outputs.file 'build/tmp/publicsuffix/okhttp3/internal/publicsuffix/publicsuffixes.br'
-
-	dependsOn popPublicSuffix
-	
-	if (project.hasProperty('unsup.ci')) {
-		environment 'LD_LIBRARY_PATH', './.ci'
-		commandLine './.ci/brotli', '-Zk', in
-	} else {
-		commandLine 'brotli', '-Zk', in
-	}
-}
-
 task dataJar(type: Jar) {
 	dependsOn proguard
 	from(zipTree('build/tmp/proguard.jar'))
@@ -459,9 +414,6 @@ task dataJar(type: Jar) {
 	exclude 'com/unascribed/sup/assets/fonts/locale/**'
 	exclude 'com/unascribed/sup/Unsup.class'
 	
-	exclude '**/publicsuffixes.gz'
-	exclude '**/*.kotlin_metadata'
-	exclude '**/*.kotlin_builtins'
 	exclude '**/*.br'
 	
 	reproducibleFileOrder = true
@@ -476,19 +428,18 @@ task brotliDataJar(type: Exec) {
 	outputs.file file(dataJar.archivePath.toString()+'.br')
 	
 	if (project.hasProperty('unsup.fast')) {
-		commandLine 'brotli', '-3k', dataJar.archivePath
+		commandLine 'brotli', '-3kf', dataJar.archivePath
 	} else if (project.hasProperty('unsup.ci')) {
 		environment 'LD_LIBRARY_PATH', './.ci'
-		commandLine './.ci/brotli', '-Zk', dataJar.archivePath
+		commandLine './.ci/brotli', '-Zkf', dataJar.archivePath
 	} else {
-		commandLine 'brotli', '-Zk', dataJar.archivePath
+		commandLine 'brotli', '-Zkf', dataJar.archivePath
 	}
 }
 
 task proguardJar(type: Jar) {
 	dependsOn proguard
 	dependsOn brotliDataJar
-	dependsOn brotliPublicSuffix
 	
 	from(zipTree('build/tmp/proguard.jar')) {
 		include 'com/unascribed/sup/bootstrap/**'
@@ -496,9 +447,6 @@ task proguardJar(type: Jar) {
 		include 'com/unascribed/sup/lib/brotli/**'
 		include 'com/unascribed/sup/Unsup.class'
 		include '**/*.br'
-	}
-	from('build/tmp/publicsuffix/okhttp3/internal/publicsuffix/publicsuffixes.br') {
-		into 'com/unascribed/sup/lib/okhttp3/internal/publicsuffix'
 	}
 	from(file(dataJar.archivePath.toString()+'.br')) {
 		into 'com/unascribed/sup'

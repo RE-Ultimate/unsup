@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.net.InetSocketAddress;
@@ -82,16 +83,16 @@ class Http1Request {
             StringBuilder sb = new StringBuilder(completeHeaders.length());
             sb.append("REQUEST HEADERS:\n");
             boolean[] firstLine = {true};
-            completeHeaders.lines().forEach(line -> {
+            for (var line : completeHeaders.split("(\r\n|\r|\n)")) {
                 // First line contains `GET /foo HTTP/1.1`.
                 // Convert it to look like other `Log.logHeaders()` outputs.
                 if (firstLine[0]) {
                     sb.append("  ").append(line).append('\n');
                     firstLine[0] = false;
-                } else if (!line.isBlank()) {
+                } else if (!line.trim().isEmpty()) {
                     sb.append("    ").append(line).append('\n');
                 }
-            });
+            }
             Log.logHeaders(sb.toString());
         }
     }
@@ -116,7 +117,7 @@ class Http1Request {
 
         // Filter any headers from systemHeaders that are set in userHeaders
         final HttpHeaders sh = HttpHeaders.of(systemHeaders.map(),
-                (k,v) -> uh.firstValue(k).isEmpty());
+                (k,v) -> !uh.firstValue(k).isPresent());
 
         // If we're sending this request through a tunnel,
         // then don't send any preemptive proxy-* headers that
@@ -315,7 +316,7 @@ class Http1Request {
         String hs = sb.toString();
         logHeaders(hs);
         ByteBuffer b = ByteBuffer.wrap(hs.getBytes(US_ASCII));
-        return List.of(b);
+        return Collections.singletonList(b);
     }
 
     Http1RequestBodySubscriber continueRequest()  {
@@ -439,7 +440,7 @@ class Http1Request {
                                   + contentLength + ", got: " + written;
                     http1Exchange.appendToOutgoing(new IOException(msg));
                 } else {
-                    http1Exchange.appendToOutgoing(List.of(item));
+                    http1Exchange.appendToOutgoing(Collections.singletonList(item));
                 }
             }
         }

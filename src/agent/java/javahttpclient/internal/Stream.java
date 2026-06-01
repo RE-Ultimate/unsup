@@ -30,8 +30,6 @@ import static javahttpclient.internal.Exchange.MAX_NON_FINAL_RESPONSES;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.net.ProtocolException;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -44,6 +42,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import javahttpclient.flow.Flow;
 import javahttpclient.flow.Flow.Subscription;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -170,8 +170,8 @@ public class Stream<T> extends ExchangeImpl<T> {
     // Indicates the first reason that was invoked when sending a ResetFrame
     // to the server. A streamState of 0 indicates that no reset was sent.
     // (see markStream(int code)
-    private volatile int streamState; // assigned using STREAM_STATE varhandle.
-    private volatile boolean deRegistered; // assigned using DEREGISTERED varhandle.
+    private final AtomicInteger streamState = new AtomicInteger();
+    private final AtomicBoolean deRegistered = new AtomicBoolean();
 
     // state flags
     private boolean requestSent, responseReceived;
@@ -378,7 +378,7 @@ public class Stream<T> extends ExchangeImpl<T> {
     // to make sure that the stream count is decremented only once for
     // a given stream.
     boolean deRegister() {
-        return DEREGISTERED.compareAndSet(this, false, true);
+        return deRegistered.compareAndSet(false, true);
     }
 
     @Override
@@ -494,10 +494,10 @@ public class Stream<T> extends ExchangeImpl<T> {
      * @return the previous value of the stream state.
      */
     int  markStream(int code) {
-        if (code == 0) return streamState;
+        if (code == 0) return streamState.get();
         sendLock.lock();
         try {
-            return (int) STREAM_STATE.compareAndExchange(this, 0, code);
+            return streamState.compareAndSet(0, code) ? code : streamState.get();
         } finally {
             sendLock.unlock();
         }
@@ -507,7 +507,7 @@ public class Stream<T> extends ExchangeImpl<T> {
         sendLock.lock();
          try {
              // must not send DataFrame after reset.
-             if (streamState == 0) {
+             if (streamState.get() == 0) {
                 connection.sendDataFrame(frame);
              }
         } finally {
@@ -582,7 +582,7 @@ public class Stream<T> extends ExchangeImpl<T> {
             if (hf.getFlag(HeaderFrame.END_STREAM)) {
                 endStreamSeen = true;
                 if (debug.on()) debug.log("handling END_STREAM: %d", streamid);
-                receiveDataFrame(new DataFrame(streamid, DataFrame.END_STREAM, List.of()));
+                receiveDataFrame(new DataFrame(streamid, DataFrame.END_STREAM, Collections.emptyList()));
             }
         } else if (frame instanceof DataFrame df) {
             if (df.getFlag(DataFrame.END_STREAM)) endStreamSeen = true;
@@ -924,7 +924,7 @@ public class Stream<T> extends ExchangeImpl<T> {
         final HttpHeaders uh = userh;
         BiPredicate<String, String> overrides =
                 (k, v) -> COOKIE_HEADER.equalsIgnoreCase(k)
-                          || uh.firstValue(k).isEmpty();
+                          || !uh.firstValue(k).isPresent();
 
         // Filter any headers from systemHeaders that are set in userHeaders
         //   except for "Cookie:" - user cookies will be appended to system
@@ -1194,7 +1194,7 @@ public class Stream<T> extends ExchangeImpl<T> {
                     cancelImpl(t);
                     return;
                 }
-                int state = streamState;
+                int state = streamState.get();
 
                 do {
                     // handle COMPLETED;
@@ -1236,7 +1236,7 @@ public class Stream<T> extends ExchangeImpl<T> {
                         } else {
                             assert !endStreamSent : "internal error, send data after END_STREAM flag";
                         }
-                        if ((state = streamState) != 0) {
+                        if ((state = streamState.get()) != 0) {
                             if (debug.on()) debug.log("trySend: cancelled: %s", String.valueOf(t));
                             break;
                         }
@@ -1252,7 +1252,7 @@ public class Stream<T> extends ExchangeImpl<T> {
 
                 if (state != 0) {
                     t = errorRef.get();
-                    if (t == null) t = new IOException(ResetFrame.stringForCode(streamState));
+                    if (t == null) t = new IOException(ResetFrame.stringForCode(streamState.get()));
                     throw t;
                 }
 
@@ -1317,7 +1317,7 @@ public class Stream<T> extends ExchangeImpl<T> {
     }
 
     private DataFrame getEmptyEndStreamDataFrame()  {
-        return new DataFrame(streamid, DataFrame.END_STREAM, List.of());
+        return new DataFrame(streamid, DataFrame.END_STREAM, Collections.emptyList());
     }
 
     /**
@@ -1602,7 +1602,7 @@ public class Stream<T> extends ExchangeImpl<T> {
         }
         try {
             // will send a RST_STREAM frame
-            if (streamid != 0 && streamState == 0) {
+            if (streamid != 0 && streamState.get() == 0) {
                 final Throwable cause = Utils.getCompletionCause(e);
                 if (cause instanceof EOFException) {
                     // read EOF: no need to try & send reset
@@ -1980,17 +1980,4 @@ public class Stream<T> extends ExchangeImpl<T> {
 
     }
 
-    private static final VarHandle STREAM_STATE;
-    private static final VarHandle DEREGISTERED;
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            STREAM_STATE = lookup
-                    .findVarHandle(Stream.class, "streamState", int.class);
-            DEREGISTERED = lookup
-                    .findVarHandle(Stream.class, "deRegistered", boolean.class);
-        } catch (Exception x) {
-            throw new ExceptionInInitializerError(x);
-        }
-    }
 }

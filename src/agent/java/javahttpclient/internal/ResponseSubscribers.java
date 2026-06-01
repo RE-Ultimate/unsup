@@ -35,6 +35,7 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -44,6 +45,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+
 import javahttpclient.flow.Flow;
 import javahttpclient.flow.Flow.Subscriber;
 import javahttpclient.flow.Flow.Subscription;
@@ -316,7 +319,7 @@ public class ResponseSubscribers {
 
         // An immutable ByteBuffer sentinel to mark that the last byte was received.
         private static final ByteBuffer LAST_BUFFER = ByteBuffer.wrap(new byte[0]);
-        private static final List<ByteBuffer> LAST_LIST = List.of(LAST_BUFFER);
+        private static final List<ByteBuffer> LAST_LIST = Collections.singletonList(LAST_BUFFER);
         private static final Logger debug =
                 Utils.getDebugLogger("HttpResponseInputStream"::toString, Utils.DEBUG);
 
@@ -345,7 +348,7 @@ public class ResponseSubscribers {
             // response body is received.
             // This makes it possible for sendAsync().get().body()
             // to complete before the response body is received.
-            return CompletableFuture.completedStage(this);
+            return CompletableFuture.completedFuture(this);
         }
 
         // Returns the current byte buffer to read from.
@@ -410,7 +413,6 @@ public class ResponseSubscribers {
 
         @Override
         public int read(byte[] bytes, int off, int len) throws IOException {
-            Objects.checkFromIndexSize(off, len, bytes.length);
             if (len == 0) {
                 return 0;
             }
@@ -692,7 +694,13 @@ public class ResponseSubscribers {
                 subscriber.onComplete();
             } finally {
                 try {
-                    cf.completeAsync(() -> finisher.apply(subscriber));
+                	ForkJoinPool.commonPool().execute(() -> {
+                        try {
+                        	cf.complete(finisher.apply(subscriber));
+                        } catch (Throwable throwable) {
+                            cf.completeExceptionally(throwable);
+                        }
+                	});
                 } catch (Throwable throwable) {
                     cf.completeExceptionally(throwable);
                 }

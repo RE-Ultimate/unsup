@@ -24,14 +24,15 @@
  */
 package javahttpclient.internal.common;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.ProtocolException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import javahttpclient.internal.common.Utils;
 
 /*
  * Checks RFC 9113 rules (relaxed) compliance regarding pseudo-headers.
@@ -50,17 +51,20 @@ public class ValidatingHeadersConsumer {
     }
 
     // Map of permitted pseudo headers in requests and responses
-    private static final Map<String, Context> PSEUDO_HEADERS =
-            Map.of(":authority", Context.REQUEST,
-                    ":method", Context.REQUEST,
-                    ":path", Context.REQUEST,
-                    ":scheme", Context.REQUEST,
-                    ":status", Context.RESPONSE);
+    private static final Map<String, Context> PSEUDO_HEADERS; static {
+    	var tmp = new HashMap<String, Context>();
+        tmp.put(":authority", Context.REQUEST);
+        tmp.put(":method", Context.REQUEST);
+        tmp.put(":path", Context.REQUEST);
+        tmp.put(":scheme", Context.REQUEST);
+        tmp.put(":status", Context.RESPONSE);
+        PSEUDO_HEADERS = Collections.unmodifiableMap(tmp);
+    }
 
     // connection-specific, prohibited by RFC 9113 section 8.2.2
     private static final Set<String> PROHIBITED_HEADERS =
-            Set.of("connection", "proxy-connection", "keep-alive",
-                    "transfer-encoding", "upgrade");
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList("connection", "proxy-connection", "keep-alive",
+                    "transfer-encoding", "upgrade")));
 
     /** Used to check that if there are pseudo-headers, they go first */
     private boolean pseudoHeadersEnded;

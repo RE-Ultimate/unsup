@@ -313,6 +313,8 @@ public class RequestHelper {
 					if (res.statusCode()/100 == 500) {
 						throw new Retry(url.getHost()+" responded with a server error for "+url+" ("+res.statusCode()+")",
 								new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s));
+					} else if (res.statusCode()/100 == 300) {
+						throw new IOException("Received unhandled 3XX response from server for "+url+": "+res.statusCode()+" "+res.headers().firstValue("Location")+"\n"+s);
 					} else {
 						throw new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s);
 					}

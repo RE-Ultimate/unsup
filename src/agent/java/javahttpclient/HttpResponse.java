@@ -41,16 +41,14 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
-import javahttpclient.flow.Flow;
-import javahttpclient.flow.Flow.Publisher;
-import javahttpclient.flow.Flow.Subscriber;
-import javahttpclient.flow.Flow.Subscription;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -58,6 +56,10 @@ import java.util.stream.Stream;
 
 import javax.net.ssl.SSLSession;
 
+import javahttpclient.flow.Flow;
+import javahttpclient.flow.Flow.Publisher;
+import javahttpclient.flow.Flow.Subscriber;
+import javahttpclient.flow.Flow.Subscription;
 import javahttpclient.internal.BufferingSubscriber;
 import javahttpclient.internal.LimitingSubscriber;
 import javahttpclient.internal.LineSubscriberAdapter;
@@ -103,7 +105,7 @@ public interface HttpResponse<T> {
      *
      * @return the response code
      */
-    public int statusCode();
+    int statusCode();
 
     /**
      * {@return if present, a label identifying the connection on which the
@@ -140,7 +142,7 @@ public interface HttpResponse<T> {
      *
      * @return the request
      */
-    public HttpRequest request();
+    HttpRequest request();
 
     /**
      * Returns an {@code Optional} containing the previous intermediate response
@@ -150,14 +152,14 @@ public interface HttpResponse<T> {
      *
      * @return an Optional containing the HttpResponse, if any.
      */
-    public Optional<HttpResponse<T>> previousResponse();
+    Optional<HttpResponse<T>> previousResponse();
 
     /**
      * Returns the received response headers.
      *
      * @return the response headers
      */
-    public HttpHeaders headers();
+    HttpHeaders headers();
 
     /**
      * Returns the body. Depending on the type of {@code T}, the returned body
@@ -170,7 +172,7 @@ public interface HttpResponse<T> {
      *
      * @return the body
      */
-    public T body();
+    T body();
 
     /**
      * Returns an {@link Optional} containing the {@link SSLSession} in effect
@@ -180,7 +182,7 @@ public interface HttpResponse<T> {
      * @return an {@code Optional} containing the {@code SSLSession} associated
      *         with the response
      */
-    public Optional<SSLSession> sslSession();
+    Optional<SSLSession> sslSession();
 
     /**
      * Returns the {@code URI} that the response was received from. This may be
@@ -188,14 +190,14 @@ public interface HttpResponse<T> {
      *
      * @return the URI of the response
      */
-     public URI uri();
+     URI uri();
 
     /**
      * Returns the HTTP protocol version that was used for this response.
      *
      * @return HTTP protocol version
      */
-    public HttpClient.Version version();
+    HttpClient.Version version();
 
 
     /**
@@ -207,19 +209,19 @@ public interface HttpResponse<T> {
          * Provides the response status code.
          * @return the response status code
          */
-        public int statusCode();
+        int statusCode();
 
         /**
          * Provides the response headers.
          * @return the response headers
          */
-        public HttpHeaders headers();
+        HttpHeaders headers();
 
         /**
          * Provides the response protocol version.
          * @return the response protocol version
          */
-        public HttpClient.Version version();
+        HttpClient.Version version();
     }
 
     /**
@@ -288,7 +290,7 @@ public interface HttpResponse<T> {
          * @param responseInfo the response info
          * @return a body subscriber
          */
-        public BodySubscriber<T> apply(ResponseInfo responseInfo);
+        BodySubscriber<T> apply(ResponseInfo responseInfo);
     }
 
     /**
@@ -562,7 +564,7 @@ public interface HttpResponse<T> {
          */
         public static BodyHandler<Path> ofFile(Path file, OpenOption... openOptions) {
             Objects.requireNonNull(file);
-            List<OpenOption> opts = List.of(openOptions);
+            List<OpenOption> opts = Collections.unmodifiableList(Arrays.asList(openOptions));
             if (opts.contains(DELETE_ON_CLOSE) || opts.contains(READ)) {
                 // these options make no sense, since the FileChannel is not exposed
                 throw new IllegalArgumentException("invalid openOptions: " + opts);
@@ -611,7 +613,7 @@ public interface HttpResponse<T> {
         public static BodyHandler<Path> ofFileDownload(Path directory,
                                                        OpenOption... openOptions) {
             Objects.requireNonNull(directory);
-            List<OpenOption> opts = List.of(openOptions);
+            List<OpenOption> opts = Collections.unmodifiableList(Arrays.asList(openOptions));
             if (opts.contains(DELETE_ON_CLOSE)) {
                 throw new IllegalArgumentException("invalid option: " + DELETE_ON_CLOSE);
             }
@@ -849,7 +851,7 @@ public interface HttpResponse<T> {
          * @param acceptor the acceptor function that must be successfully
          *                 invoked to accept the push promise
          */
-        public void applyPushPromise(
+        void applyPushPromise(
             HttpRequest initiatingRequest,
             HttpRequest pushPromiseRequest,
             Function<HttpResponse.BodyHandler<T>,CompletableFuture<HttpResponse<T>>> acceptor
@@ -888,7 +890,7 @@ public interface HttpResponse<T> {
          * @param pushPromisesMap a map to accumulate push promises into
          * @return a push promise handler
          */
-        public static <T> PushPromiseHandler<T>
+        static <T> PushPromiseHandler<T>
         of(Function<HttpRequest,BodyHandler<T>> pushPromiseHandler,
            ConcurrentMap<HttpRequest,CompletableFuture<HttpResponse<T>>> pushPromisesMap) {
             return new PushPromisesHandlerWithMap<>(pushPromiseHandler, pushPromisesMap);
@@ -948,7 +950,7 @@ public interface HttpResponse<T> {
          *
          * @return a CompletionStage for the response body
          */
-        public CompletionStage<T> getBody();
+        CompletionStage<T> getBody();
     }
 
     /**
@@ -1162,7 +1164,7 @@ public interface HttpResponse<T> {
          */
         public static BodySubscriber<Path> ofFile(Path file, OpenOption... openOptions) {
             Objects.requireNonNull(file);
-            List<OpenOption> opts = List.of(openOptions);
+            List<OpenOption> opts = Collections.unmodifiableList(Arrays.asList(openOptions));
             if (opts.contains(DELETE_ON_CLOSE) || opts.contains(READ)) {
                 // these options make no sense, since the FileChannel is not exposed
                 throw new IllegalArgumentException("invalid openOptions: " + opts);

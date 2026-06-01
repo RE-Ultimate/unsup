@@ -38,10 +38,10 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
-import javahttpclient.flow.Flow;
 import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
+import javahttpclient.flow.Flow;
 import javahttpclient.internal.HttpRequestBuilderImpl;
 import javahttpclient.internal.RequestPublishers;
 
@@ -122,7 +122,7 @@ public abstract class HttpRequest {
          * @throws IllegalArgumentException if the {@code URI} scheme is not
          *         supported
          */
-        public Builder uri(URI uri);
+        Builder uri(URI uri);
 
         /**
          * Requests the server to acknowledge the request before sending the
@@ -135,7 +135,7 @@ public abstract class HttpRequest {
          * @param enable {@code true} if Expect continue to be sent
          * @return this builder
          */
-        public Builder expectContinue(boolean enable);
+        Builder expectContinue(boolean enable);
 
         /**
          * Sets the preferred {@link HttpClient.Version} for this request.
@@ -148,7 +148,7 @@ public abstract class HttpRequest {
          * @param version the HTTP protocol version requested
          * @return this builder
          */
-        public Builder version(HttpClient.Version version);
+        Builder version(HttpClient.Version version);
 
         /**
          * Adds the given name value pair to the set of headers for this request.
@@ -170,7 +170,7 @@ public abstract class HttpRequest {
          *         RFC 7230 section-3.2</a>, or the header name or value is restricted
          *         by the implementation.
          */
-        public Builder header(String name, String value);
+        Builder header(String name, String value);
 
         /**
          * Adds the given name value pairs to the set of headers for this
@@ -188,7 +188,7 @@ public abstract class HttpRequest {
          *         {@linkplain #header(String, String) restricted} by the
          *         implementation.
          */
-        public Builder headers(String... headers);
+        Builder headers(String... headers);
 
         /**
          * Sets a timeout for this request. If the response is not received
@@ -205,7 +205,7 @@ public abstract class HttpRequest {
          * @return this builder
          * @throws IllegalArgumentException if the duration is non-positive
          */
-        public abstract Builder timeout(Duration duration);
+        Builder timeout(Duration duration);
 
         /**
          * Sets the given name value pair to the set of headers for this
@@ -220,7 +220,7 @@ public abstract class HttpRequest {
          *         {@linkplain #header(String, String) restricted} by the
          *         implementation.
          */
-        public Builder setHeader(String name, String value);
+        Builder setHeader(String name, String value);
 
         /**
          * Sets the request method of this builder to GET.
@@ -228,7 +228,7 @@ public abstract class HttpRequest {
          *
          * @return this builder
          */
-        public Builder GET();
+        Builder GET();
 
         /**
          * Sets the request method of this builder to POST and sets its
@@ -238,7 +238,7 @@ public abstract class HttpRequest {
          *
          * @return this builder
          */
-        public Builder POST(BodyPublisher bodyPublisher);
+        Builder POST(BodyPublisher bodyPublisher);
 
         /**
          * Sets the request method of this builder to PUT and sets its
@@ -248,14 +248,14 @@ public abstract class HttpRequest {
          *
          * @return this builder
          */
-        public Builder PUT(BodyPublisher bodyPublisher);
+        Builder PUT(BodyPublisher bodyPublisher);
 
         /**
          * Sets the request method of this builder to DELETE.
          *
          * @return this builder
          */
-        public Builder DELETE();
+        Builder DELETE();
 
         /**
          * Sets the request method of this builder to HEAD.
@@ -288,7 +288,7 @@ public abstract class HttpRequest {
          *         RFC 7230 section-3.1.1</a>, or the method is restricted by the
          *         implementation.
          */
-        public Builder method(String method, BodyPublisher bodyPublisher);
+        Builder method(String method, BodyPublisher bodyPublisher);
 
         /**
          * Builds and returns an {@link HttpRequest}.
@@ -300,7 +300,7 @@ public abstract class HttpRequest {
          * @return a new {@code HttpRequest}
          * @throws IllegalStateException if a URI has not been set
          */
-        public HttpRequest build();
+        HttpRequest build();
 
         /**
          * Returns an exact duplicate copy of this {@code Builder} based on
@@ -309,7 +309,7 @@ public abstract class HttpRequest {
          *
          * @return an exact copy of this builder
          */
-        public Builder copy();
+        Builder copy();
     }
 
     /**
@@ -378,20 +378,17 @@ public abstract class HttpRequest {
         request.version().ifPresent(builder::version);
         request.timeout().ifPresent(builder::timeout);
         var method = request.method();
-        request.bodyPublisher().ifPresentOrElse(
-                // if body is present, set it
-                bodyPublisher -> builder.method(method, bodyPublisher),
-                // otherwise, the body is absent, special case for GET/DELETE/HEAD,
-                // or else use empty body
-                () -> {
-                    switch (method) {
-                        case "GET" -> builder.GET();
-                        case "DELETE" -> builder.DELETE();
-                        case "HEAD" -> builder.HEAD();
-                        default -> builder.method(method, HttpRequest.BodyPublishers.noBody());
-                    }
-                }
-        );
+        var bpub = request.bodyPublisher();
+        if (bpub.isPresent()) {
+        	builder.method(method, bpub.get());
+        } else {
+            switch (method) {
+                case "GET" -> builder.GET();
+                case "DELETE" -> builder.DELETE();
+                case "HEAD" -> builder.HEAD();
+                default -> builder.method(method, HttpRequest.BodyPublishers.noBody());
+            }
+        }
         return builder;
     }
 
@@ -502,7 +499,8 @@ public abstract class HttpRequest {
      *
      * @return the hash-code value for this HTTP request
      */
-    public final int hashCode() {
+    @Override
+	public final int hashCode() {
         return method().hashCode()
                 + uri().hashCode()
                 + headers().hashCode();
@@ -702,7 +700,6 @@ public abstract class HttpRequest {
          *                                   out of bounds
          */
         public static BodyPublisher ofByteArray(byte[] buf, int offset, int length) {
-            Objects.checkFromIndexSize(offset, length, buf.length);
             return new RequestPublishers.ByteArrayPublisher(buf, offset, length);
         }
 

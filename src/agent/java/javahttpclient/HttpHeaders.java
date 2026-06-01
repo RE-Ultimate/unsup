@@ -30,6 +30,7 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -111,7 +112,7 @@ public final class HttpHeaders {
         List<String> values = map().get(name);
         // Making unmodifiable list out of empty in order to make a list which
         // throws UOE unconditionally
-        return values != null ? values : List.of();
+        return values != null ? values : Collections.emptyList();
     }
 
     /**
@@ -137,7 +138,8 @@ public final class HttpHeaders {
      * @return {@code true} if, and only if, the given object is an {@code
      *         HttpHeaders} that is equal to this HTTP headers
      */
-    public final boolean equals(Object obj) {
+    @Override
+	public boolean equals(Object obj) {
         if (!(obj instanceof HttpHeaders))
             return false;
         HttpHeaders that = (HttpHeaders)obj;
@@ -153,7 +155,8 @@ public final class HttpHeaders {
      *
      * @return the hash-code value for this HTTP headers
      */
-    public final int hashCode() {
+    @Override
+	public int hashCode() {
         int h = 0;
         for (Map.Entry<String, List<String>> e : map().entrySet()) {
             h += entryHash(e);
@@ -215,7 +218,7 @@ public final class HttpHeaders {
 
     // --
 
-    private static final HttpHeaders NO_HEADERS = new HttpHeaders(Map.of());
+    private static final HttpHeaders NO_HEADERS = new HttpHeaders(Collections.emptyMap());
 
     private final Map<String,List<String>> headers;
 
@@ -223,7 +226,7 @@ public final class HttpHeaders {
         this.headers = headers;
     }
 
-    private static final int entryHash(Map.Entry<String, List<String>> e) {
+    private static int entryHash(Map.Entry<String, List<String>> e) {
         String key = e.getKey();
         List<String> value = e.getValue();
         // we know that by construction key and values can't be null
@@ -256,7 +259,7 @@ public final class HttpHeaders {
                         || notAdded.contains(headerName.toLowerCase(Locale.ROOT)))
                     throw new IllegalArgumentException("duplicate key: " + headerName);
                 notAdded.add(headerName.toLowerCase(Locale.ROOT));
-            } else if (other.put(headerName, List.copyOf(tempList)) != null) {
+            } else if (other.put(headerName, Collections.unmodifiableList(new ArrayList<>(tempList))) != null) {
                 throw new IllegalArgumentException("duplicate key: " + headerName);
             }
             tempList.clear();

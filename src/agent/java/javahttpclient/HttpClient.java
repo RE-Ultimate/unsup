@@ -32,13 +32,16 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.channels.Selector;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import javahttpclient.flow.Flow.Subscription;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -48,6 +51,7 @@ import javahttpclient.HttpResponse.BodyHandlers;
 import javahttpclient.HttpResponse.BodySubscriber;
 import javahttpclient.HttpResponse.BodySubscribers;
 import javahttpclient.HttpResponse.PushPromiseHandler;
+import javahttpclient.flow.Flow.Subscription;
 import javahttpclient.internal.HttpClientBuilderImpl;
 
 /**
@@ -229,7 +233,18 @@ public abstract class HttpClient implements AutoCloseable {
          * {@link #proxy(ProxySelector)} in order to build an instance of
          * {@link HttpClient} that uses no proxy.
          */
-        ProxySelector NO_PROXY = ProxySelector.of(null);
+        ProxySelector NO_PROXY = new ProxySelector() {
+			
+			@Override
+			public List<Proxy> select(URI uri) {
+				return Collections.singletonList(Proxy.NO_PROXY);
+			}
+			
+			@Override
+			public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+				
+			}
+		};
 
 
         /**

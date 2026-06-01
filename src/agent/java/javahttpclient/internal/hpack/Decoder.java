@@ -27,6 +27,8 @@ package javahttpclient.internal.hpack;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -97,7 +99,7 @@ public final class Decoder {
                 throw new InternalError(String.valueOf(i));
             }
         }
-        states = List.of(s);
+        states = Collections.unmodifiableList(Arrays.asList(s));
     }
 
     private final long id;

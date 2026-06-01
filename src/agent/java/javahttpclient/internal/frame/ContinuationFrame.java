@@ -26,7 +26,10 @@
 package javahttpclient.internal.frame;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
+
+import javahttpclient.internal.common.SubscriberWrapper;
 
 public class ContinuationFrame extends HeaderFrame {
 
@@ -37,7 +40,7 @@ public class ContinuationFrame extends HeaderFrame {
     }
 
     public ContinuationFrame(int streamid, ByteBuffer headersBlock) {
-        this(streamid, 0, List.of(headersBlock));
+        this(streamid, 0, Collections.singletonList(headersBlock));
     }
 
     @Override

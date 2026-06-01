@@ -30,7 +30,6 @@ import java.net.ProtocolException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -337,7 +336,7 @@ final class Exchange<T> {
     }
 
     synchronized IOException failed(IOException io) {
-        IOException cause = failed.compareAndExchange(null, io);
+        IOException cause = failed.compareAndSet(null, io) ? io : failed.get();
         return cause == null ? io : cause;
     }
 
@@ -438,7 +437,7 @@ final class Exchange<T> {
         }
 
         return ex.getResponseAsync(parentExecutor)
-                .completeOnTimeout(null, responseTimeoutMillis, TimeUnit.MILLISECONDS)
+//                .completeOnTimeout(null, responseTimeoutMillis, TimeUnit.MILLISECONDS)
                 .thenCompose((Response r1) -> {
                     // The response will only be null if there was a timeout
                     // send body regardless

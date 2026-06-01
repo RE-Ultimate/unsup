@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -52,6 +53,7 @@ import javahttpclient.internal.common.Log;
 import javahttpclient.internal.common.Logger;
 import javahttpclient.internal.common.MinimalFuture;
 import javahttpclient.internal.common.SequentialScheduler;
+import javahttpclient.internal.common.SubscriberWrapper;
 import javahttpclient.internal.common.Utils;
 import javahttpclient.internal.Http1Exchange;
 
@@ -137,7 +139,7 @@ class Http1Exchange<T> extends ExchangeImpl<T> {
         }
 
         /** Final sentinel in the stream of request body. */
-        static final List<ByteBuffer> COMPLETED = List.of(ByteBuffer.allocate(0));
+        static final List<ByteBuffer> COMPLETED = Collections.singletonList(ByteBuffer.allocate(0));
 
         final void request(long n) {
             if (debug.on())

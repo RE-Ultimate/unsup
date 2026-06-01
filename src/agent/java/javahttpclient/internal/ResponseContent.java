@@ -35,6 +35,7 @@ import java.util.function.Consumer;
 import javahttpclient.HttpHeaders;
 import javahttpclient.HttpResponse;
 import javahttpclient.internal.common.Logger;
+import javahttpclient.internal.common.SubscriberWrapper;
 import javahttpclient.internal.common.Utils;
 import javahttpclient.internal.ResponseContent;
 
@@ -516,7 +517,7 @@ class ResponseContent {
                     boolean hasDemand = sub.demand().tryDecrement();
                     assert hasDemand;
                     breceived += b.remaining();
-                    pusher.onNext(List.of(b.asReadOnlyBuffer()));
+                    pusher.onNext(Collections.singletonList(b.asReadOnlyBuffer()));
                 }
             } catch (Throwable t) {
                 if (debug.on()) debug.log("Unexpected exception", t);
@@ -621,7 +622,7 @@ class ResponseContent {
                     int amount = (int)Math.min(b.remaining(), unfulfilled); // safe cast
                     unfulfilled = remaining -= amount;
                     ByteBuffer buffer = Utils.sliceWithLimitedCapacity(b, amount);
-                    pusher.onNext(List.of(buffer.asReadOnlyBuffer()));
+                    pusher.onNext(Collections.singletonList(buffer.asReadOnlyBuffer()));
                 }
                 if (unfulfilled == 0) {
                     // We're done! All data has been received.

@@ -32,6 +32,9 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import java.util.concurrent.CompletableFuture;
@@ -174,15 +177,15 @@ public final class ResponseBodyHandlers {
         /** The "filename" parameter. */
         static final Pattern FILENAME = Pattern.compile("filename\\s*=\\s*", CASE_INSENSITIVE);
 
-        static final List<String> PROHIBITED = List.of(".", "..", "", "~" , "|");
+        static final List<String> PROHIBITED = Collections.unmodifiableList(Arrays.asList(".", "..", "", "~" , "|"));
 
         // Characters disallowed in token values
 
-        static final Set<Character> NOT_ALLOWED_IN_TOKEN = Set.of(
+        static final Set<Character> NOT_ALLOWED_IN_TOKEN = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             '(', ')', '<', '>', '@',
             ',', ';', ':', '\\', '"',
             '/', '[', ']', '?', '=',
-            '{', '}', ' ', '\t');
+            '{', '}', ' ', '\t')));
 
         static boolean allowedInToken(char c) {
             if (NOT_ALLOWED_IN_TOKEN.contains(c))

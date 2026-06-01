@@ -85,6 +85,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -669,7 +670,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         final long httpCount = pendingHttpOperationsCount.decrementAndGet();
         final long http2Count = pendingHttp2StreamCount.get();
         final long webSocketCount = pendingWebSocketCount.get();
-        if (count == 0 && (facadeRef.refersTo(null) || shutdownRequested)) {
+        if (count == 0 && (facadeRef.get() == null || shutdownRequested)) {
             selmgr.wakeupSelector();
         }
         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
@@ -691,7 +692,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         final long http2Count = pendingHttp2StreamCount.decrementAndGet();
         final long httpCount = pendingHttpOperationsCount.get();
         final long webSocketCount = pendingWebSocketCount.get();
-        if (count == 0 && (facadeRef.refersTo(null) || shutdownRequested)) {
+        if (count == 0 && (facadeRef.get() == null || shutdownRequested)) {
             selmgr.wakeupSelector();
         }
         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
@@ -713,7 +714,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         final long webSocketCount = pendingWebSocketCount.decrementAndGet();
         final long httpCount = pendingHttpOperationsCount.get();
         final long http2Count = pendingHttp2StreamCount.get();
-        if (count == 0 && (facadeRef.refersTo(null) || shutdownRequested)) {
+        if (count == 0 && (facadeRef.get() == null || shutdownRequested)) {
             selmgr.wakeupSelector();
         }
         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
@@ -796,11 +797,11 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         }
         @Override
         public boolean isFacadeReferenced() {
-            return !reference.refersTo(null);
+            return !(reference.get() == null);
         }
         @Override
 		public boolean isImplementationReferenced() {
-            return !implRef.refersTo(null);
+            return !(implRef.get() == null);
         }
         // The selector is considered alive if it's not yet started
         @Override
@@ -842,7 +843,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     }
 
     private boolean isReferenced() {
-        return !facadeRef.refersTo(null) || referenceCount() > 0;
+        return !(facadeRef.get() == null) || referenceCount() > 0;
     }
 
     /**
@@ -948,7 +949,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         }
     }
 
-    private static final Executor ASYNC_POOL = new CompletableFuture<Void>().defaultExecutor();
+    private static final Executor ASYNC_POOL = ForkJoinPool.commonPool();
 
     @Override
     public <T> CompletableFuture<HttpResponse<T>>
@@ -1039,7 +1040,17 @@ final class HttpClientImpl extends HttpClient implements Trackable {
             } else {
                 // make a defensive copy that can be safely canceled
                 // by the caller
-                return res.isDone() ? res : res.copy();
+            	if (res.isDone()) return res;
+                var newFuture = new CompletableFuture<HttpResponse<T>>();
+                res.handle((out, err) -> {
+                	if (err != null) {
+                		newFuture.completeExceptionally(err);
+                	} else {
+                		newFuture.complete(out);
+                	}
+                	return out;
+                });
+                return newFuture;
             }
         } catch (Throwable t) {
             requestUnreference();
@@ -1666,7 +1677,6 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     }
 
     private void initFilters() {
-        addFilter(AuthenticationFilter.class);
         addFilter(RedirectFilter.class);
         if (this.cookieHandler != null) {
             addFilter(CookieFilter.class);

@@ -91,6 +91,7 @@ import com.playsawdust.chipper.toolbox.io.Slice;
 import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
 import javahttpclient.HttpClient;
+import javahttpclient.HttpClient.Redirect;
 
 public class Agent {
 
@@ -474,6 +475,7 @@ public class Agent {
 			}
 			ctx.init(null, new TrustManager[] { trustManager }, sr);
 			http = HttpClient.newBuilder()
+				.followRedirects(Redirect.NORMAL)
 				.connectTimeout(Duration.ofSeconds(30))
 				.cookieHandler(new CookieManager(null, null))
 				.proxy(config().proxySelector())

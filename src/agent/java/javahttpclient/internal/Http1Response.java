@@ -26,11 +26,10 @@
 package javahttpclient.internal;
 
 import java.io.EOFException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -125,7 +124,7 @@ class Http1Response<T> {
         final Logger debug;
         // state & 0x01 != 0 => acquire called
         // state & 0x02 != 0 => tryRelease called
-        volatile byte state;
+        private final AtomicInteger state = new AtomicInteger();
 
         ClientRefCountTracker(HttpClientImpl client, Logger logger) {
             this.client = client;
@@ -133,7 +132,7 @@ class Http1Response<T> {
         }
 
         public boolean acquire() {
-            if (STATE.compareAndSet(this, (byte) 0, (byte) 0x01)) {
+            if (state.compareAndSet(0, 0x01)) {
                 // increment the reference count on the HttpClientImpl
                 // to prevent the SelectorManager thread from exiting
                 // until our operation is complete.
@@ -144,14 +143,14 @@ class Http1Response<T> {
             } else {
                 if (debug.on())
                     debug.log("Operation ref count for %s is already %s",
-                              client, ((state & 0x2) == 0x2) ? "released." : "incremented!" );
-                assert (state & 0x01) == 0 : "reference count already incremented";
+                              client, ((state.get() & 0x2) == 0x2) ? "released." : "incremented!" );
+                assert (state.get() & 0x01) == 0 : "reference count already incremented";
                 return false;
             }
         }
 
         public void tryRelease() {
-            if (STATE.compareAndSet(this, (byte) 0x01, (byte) 0x03)) {
+            if (state.compareAndSet(0x01, 0x03)) {
                 // decrement the reference count on the HttpClientImpl
                 // to allow the SelectorManager thread to exit if no
                 // other operation is pending and the facade is no
@@ -159,24 +158,15 @@ class Http1Response<T> {
                 if (debug.on())
                     debug.log("Operation finished: decrementing ref count for %s", client);
                 client.unreference();
-            } else if (state == 0) {
+            } else if (state.get() == 0) {
                 if (debug.on())
                     debug.log("Operation not started: releasing ref count for %s", client);
-            } else if ((state & 0x02) == 0x02) {
+            } else if ((state.get() & 0x02) == 0x02) {
                 if (debug.on())
                     debug.log("ref count for %s already released", client);
             }
         }
 
-        private static final VarHandle STATE;
-        static {
-            try {
-                STATE = MethodHandles.lookup().findVarHandle(
-                        ClientRefCountTracker.class, "state", byte.class);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new ExceptionInInitializerError(e);
-            }
-        }
     }
 
     private volatile boolean firstTimeAround = true;

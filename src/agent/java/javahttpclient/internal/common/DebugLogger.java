@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.function.Supplier;
 
+import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.pieces.DummyLogger;
 
 import javahttpclient.internal.common.DebugLogger;
@@ -62,6 +63,7 @@ final class DebugLogger implements Logger {
      * @param logLevel the level at or above which messages will be forwarded
      *               to an underlying {@link Logger}
      */
+	@Desugar
     public record LoggerConfig(Level outLevel, Level errLevel, Level logLevel) {
         public LoggerConfig {
             Objects.requireNonNull(outLevel);

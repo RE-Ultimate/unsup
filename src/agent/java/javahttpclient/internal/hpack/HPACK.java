@@ -25,6 +25,8 @@
 package javahttpclient.internal.hpack;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.function.Supplier;
@@ -44,8 +46,12 @@ import static javahttpclient.internal.hpack.HPACK.Logger.Level.NORMAL;
 public final class HPACK {
 
     private static final RootLogger LOGGER;
-    private static final Map<String, Level> logLevels =
-            Map.of("NORMAL", NORMAL, "EXTRA", EXTRA);
+    private static final Map<String, Level> logLevels; static {
+    	var tmp = new HashMap<String, Level>();
+    	tmp.put("NORMAL", NORMAL);
+    	tmp.put("EXTRA", EXTRA);
+    	logLevels = Collections.unmodifiableMap(tmp);
+    }
 
     static {
         String PROPERTY = "jdk.internal.httpclient.hpack.log.level";
