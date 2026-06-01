@@ -18,7 +18,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
-import okhttp3.Request;
+import javahttpclient.HttpRequest;
 import uk.co.lucasweb.aws.v4.signer.encoding.URLEncoding;
 
 /**
@@ -31,11 +31,11 @@ class CanonicalRequest {
 	private static final char QUERY_PARAMETER_VALUE_SEPARATOR = '=';
 
 	private final String service;
-	private final Request httpRequest;
+	private final HttpRequest httpRequest;
 	private final CanonicalHeaders headers;
 	private final String contentSha256;
 
-	CanonicalRequest(String service, Request httpRequest, CanonicalHeaders headers, String contentSha256) {
+	CanonicalRequest(String service, HttpRequest httpRequest, CanonicalHeaders headers, String contentSha256) {
 		this.service = service;
 		this.httpRequest = httpRequest;
 		this.headers = headers;
@@ -44,8 +44,8 @@ class CanonicalRequest {
 
 	String get() {
 		return httpRequest.method() +
-				"\n" + normalizePath(httpRequest.url().encodedPath()) +
-				"\n" + normalizeQuery(httpRequest.url().query()) +
+				"\n" + normalizePath(httpRequest.uri().getRawPath()) +
+				"\n" + normalizeQuery(httpRequest.uri().getRawQuery()) +
 				"\n" + headers.get() +
 				"\n" + headers.getNames() +
 				"\n" + contentSha256;

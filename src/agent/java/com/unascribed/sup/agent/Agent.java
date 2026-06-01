@@ -24,14 +24,26 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.CookieManager;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.CertPathValidator;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.PKIXCertPathChecker;
+import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +53,11 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import javax.net.ssl.CertPathTrustManagerParameters;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
@@ -54,7 +70,6 @@ import com.unascribed.sup.agent.PuppetHandler.AlertOption;
 import com.unascribed.sup.agent.PuppetHandler.AlertOptionType;
 import com.unascribed.sup.agent.auth.Authorizer;
 import com.unascribed.sup.agent.auth.Authorizer.AuthorizerSpec;
-import com.unascribed.sup.agent.pieces.MemoryCookieJar;
 import com.unascribed.sup.agent.pieces.QDIni;
 import com.unascribed.sup.agent.pieces.QDIni.QDIniException;
 import com.unascribed.sup.agent.pieces.pseudolocale.AccentedEnglish;
@@ -72,13 +87,10 @@ import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Resources;
 
 import com.playsawdust.chipper.toolbox.Stopwatch;
+import com.playsawdust.chipper.toolbox.io.Slice;
 import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
-import okhttp3.OkHttpClient;
-import okhttp3.brotli.BrotliInterceptor;
-import okhttp3.internal.concurrent.TaskRunner;
-import okhttp3.tls.HandshakeCertificates;
-import okio.ByteString;
+import javahttpclient.HttpClient;
 
 public class Agent {
 
@@ -107,7 +119,7 @@ public class Agent {
 	/** this mutex must be held while doing sensitive operations that shouldn't be interrupted */
 	static final Object dangerMutex = new Object();
 	
-	private static OkHttpClient okhttp;
+	private static HttpClient http;
 
 	public static void main(String[] args) {
 		standalone = true;
@@ -140,7 +152,7 @@ public class Agent {
 					}
 				})) {
 					Log.info("Reinitializing with newly updated config");
-					destroyOkHttp(false);
+					destroyHttp(false);
 					if (!preinit(arg)) return;
 				} else {
 					Log.info("No config update. Proceeding as normal.");
@@ -240,7 +252,7 @@ public class Agent {
 		}
 		config = Config.parse(ini, arg, lang);
 		
-		setupOkHttp(Optional.empty());
+		setupHttp(Optional.empty());
 		
 		stateFile = new File(".unsup-state.json");
 		if (stateFile.exists()) {
@@ -330,14 +342,14 @@ public class Agent {
 					auth = Optional.empty();
 				}
 				System.out.println(auth);
-				setupOkHttp(auth);
+				setupHttp(auth);
 				int M = 1024*1024;
 				try {
 					var data = RequestHelper.loadAndVerify(uri, 16*M,
 							new URI(SysProps.BOOTSTRAP_URL.get()+".sig"), key.orElse(null));
 					Files.write(configFile.toPath(), data);
 					Log.info("Successfully downloaded bootstrap config");
-					destroyOkHttp(false);
+					destroyHttp(false);
 					return loadConfig(lang);
 				} catch (Exception e) {
 					Log.error("Bootstrap error: Download failed! Exiting.", e);
@@ -370,19 +382,16 @@ public class Agent {
 	@Desugar
 	private record CertDef(String source, X509Certificate cert) {}
 	
-	private static void setupOkHttp(Optional<AuthorizerSpec> additionalAuthorizer) throws AssertionError {
-		HandshakeCertificates.Builder certsBldr = new HandshakeCertificates.Builder();
+	private static void setupHttp(Optional<AuthorizerSpec> additionalAuthorizer) throws AssertionError {
+		Set<String> insecureHosts = new HashSet<>();
 		List<CertDef> certDefs = new ArrayList<>();
 		if (config().usePlatformCaCerts()) {
 			try {
 				var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 				tmf.init((KeyStore)null);
-				if (tmf.getTrustManagers()[0] instanceof X509TrustManager x509) {
-					for (var cert : x509.getAcceptedIssuers()) {
-						certDefs.add(new CertDef("platform", cert));
-					}
-				} else {
-					Log.error("Can't add platform CA certificates as the first default trust manager is not an X509TrustManager??");
+				var x509 = findX509(tmf);
+				for (var cert : x509.getAcceptedIssuers()) {
+					certDefs.add(new CertDef("platform", cert));
 				}
 			} catch (Throwable t) {
 				Log.error("Can't add platform CA certificates due to an unexpected exception", t);
@@ -402,14 +411,14 @@ public class Agent {
 		}
 		for (String host : config().insecureHosts()) {
 			Log.debug("Adding insecure host "+host);
-			certsBldr.addInsecureHost(host);
+			insecureHosts.add(host);
 		}
 		if (certDefs.isEmpty()) {
 			// the first connection attempt will crash with "the trustAnchors parameter must be non-empty" in this state
 			Log.error("Config error: No CA certificates were added! Exiting.");
 			throw ExitCode.CONFIG_ERROR.exit();
 		} else {
-			Multimap<ByteString, CertDef> defsByEncoded = new Multimap<>();
+			Multimap<Slice, CertDef> defsByEncoded = new Multimap<>();
 			for (var def : certDefs) {
 				byte[] encoded;
 				try {
@@ -417,7 +426,7 @@ public class Agent {
 				} catch (CertificateEncodingException e) {
 					throw new AssertionError(e);
 				}
-				defsByEncoded.put(ByteString.of(encoded), def);
+				defsByEncoded.put(new Slice(encoded), def);
 			}
 			Set<String> locations = new LinkedHashSet<>();
 			for (var en : defsByEncoded.mapEntries()) {
@@ -432,7 +441,6 @@ public class Agent {
 					sj.add(loc);
 				}
 				Log.debug("Adding CA cert "+def.cert.getSubjectX500Principal().getName()+" (defined by "+sj+" - SHA256 fingerprint: "+fp+")");
-				certsBldr.addTrustedCertificate(def.cert);
 				locations.clear();
 			}
 		}
@@ -441,43 +449,59 @@ public class Agent {
 			authorizers.add(additionalAuthorizer.get());
 		}
 		authorizers.addAll(config().authorizers());
-		HandshakeCertificates certs = certsBldr.build();
-		OkHttpClient bootstrapOkHttp = new OkHttpClient.Builder()
-			.connectTimeout(30, TimeUnit.SECONDS)
-			.readTimeout(15, TimeUnit.SECONDS)
-			.writeTimeout(15, TimeUnit.SECONDS)
-			.sslSocketFactory(certs.sslSocketFactory(), certs.trustManager())
-			.addInterceptor(chain -> {
-				String url = chain.request().url().toString();
-				var req = chain.request();
-				for (var en : authorizers) {
-					if (url.startsWith(en.urlPrefix())) {
-						var bldr = req.newBuilder();
-						en.auth().authorize(req, bldr);
-						req = bldr.build();
-					}
-				}
-				return chain.proceed(req);
-			})
-			.addInterceptor(BrotliInterceptor.INSTANCE)
-			.proxySelector(config().proxySelector())
-			.build();
-		okhttp = bootstrapOkHttp.newBuilder()
-				.cookieJar(new MemoryCookieJar())
-				.dns(config().dns(bootstrapOkHttp))
+		
+		try {
+			var ctx = SSLContext.getInstance("TLS");
+			
+			var defaultTm = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			defaultTm.init((KeyStore)null);
+			var defaultX509 = findX509(defaultTm);
+			
+			var ourTm = TrustManagerFactory.getInstance("PKIX");
+			var pkixParams = new PKIXBuilderParameters(certDefs.stream()
+					.map(cert -> new TrustAnchor(cert.cert, null))
+					.collect(Collectors.toSet()), null);
+			pkixParams.addCertPathChecker((PKIXCertPathChecker)CertPathValidator.getInstance("PKIX").getRevocationChecker());
+			var trustpath = new CertPathTrustManagerParameters(pkixParams);
+			ourTm.init(trustpath);
+			var trustManager = findX509(ourTm);
+			
+			SecureRandom sr;
+			try {
+				sr = SecureRandom.getInstance("NativePRNGNonBlocking");
+			} catch (NoSuchAlgorithmException e) {
+				sr = new SecureRandom();
+			}
+			ctx.init(null, new TrustManager[] { trustManager }, sr);
+			http = HttpClient.newBuilder()
+				.connectTimeout(Duration.ofSeconds(30))
+				.cookieHandler(new CookieManager(null, null))
+				.proxy(config().proxySelector())
+				.sslContext(ctx)
 				.build();
+		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | KeyManagementException | KeyStoreException e) {
+			throw new AssertionError(e);
+		}
+	}
+
+	private static X509TrustManager findX509(TrustManagerFactory tmf) {
+		for (var mgr : tmf.getTrustManagers()) {
+			if (mgr instanceof X509TrustManager xtm) {
+				return xtm;
+			}
+		}
+		throw new AssertionError("No X509TrustManager");
 	}
 	
-	private static void destroyOkHttp(boolean wait) {
-		if (okhttp() != null) {
-			okhttp().dispatcher().executorService().shutdown();
-			okhttp().connectionPool().evictAll();
+	private static void destroyHttp(boolean wait) {
+		if (http != null) {
+			http.shutdown();
 			if (wait) {
 				try {
-					okhttp().dispatcher().executorService().awaitTermination(500, TimeUnit.MILLISECONDS);
+					http.awaitTermination(Duration.ofMillis(500));
 				} catch (InterruptedException e) {}
 			}
-			okhttp = null;
+			http = null;
 		}
 	}
 	
@@ -508,7 +532,7 @@ public class Agent {
 				er.run();
 			} catch (Throwable t) {}
 		}
-		destroyOkHttp(true);
+		destroyHttp(true);
 		var tarray = new Thread[16];
 		Thread.enumerate(tarray);
 		for (var t : tarray) {
@@ -517,9 +541,6 @@ public class Agent {
 				t.setUncaughtExceptionHandler((x, e) -> {});
 			}
 		}
-		// not in destroyOkHttp as this is not reversible
-		TaskRunner.INSTANCE.cancelAll();
-		((TaskRunner.RealBackend)TaskRunner.INSTANCE.getBackend()).shutdown();
 		if (Bootstrapper.universe != null) Bootstrapper.universe.forget();
 		cleanup = null;
 	}
@@ -565,8 +586,8 @@ public class Agent {
 		return config;
 	}
 
-	public static OkHttpClient okhttp() {
-		return okhttp;
+	public static HttpClient http() {
+		return http;
 	}
-	
+
 }

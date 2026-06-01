@@ -234,7 +234,8 @@ public class GLPuppet {
 					return;
 				}
 				synchronized (mainWindow) {
-					mainWindow.throbber.animateDone();
+					if (mainWindow.throbber.isDone()) Puppet.reportDone();
+					else mainWindow.throbber.animateDone();
 				}
 			}
 			

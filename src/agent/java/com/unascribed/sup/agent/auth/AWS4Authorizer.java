@@ -25,7 +25,7 @@ import java.util.TimeZone;
 
 import com.unascribed.sup.agent.data.HashFunction;
 
-import okhttp3.Request;
+import javahttpclient.HttpRequest;
 import uk.co.lucasweb.aws.v4.signer.Signer;
 import uk.co.lucasweb.aws.v4.signer.Signer.AwsCredentials;
 
@@ -46,16 +46,16 @@ public class AWS4Authorizer implements Authorizer {
 	}
 	
 	@Override
-	public void authorize(Request orig, Request.Builder req) {
+	public void authorize(HttpRequest orig, HttpRequest.Builder req) {
 		var d = DATE.get().format(new Date());
-		req.addHeader("Authorization", Signer.builder()
+		req.header("Authorization", Signer.builder()
 				.awsCredentials(new AwsCredentials(accessId, accessKey))
 				.region(region)
-				.header("host", orig.url().host())
+				.header("host", orig.uri().getHost())
 				.header("x-amz-date", d)
 				.build(orig, "s3", HashFunction.SHA2_256.emptyHash())
 				.getSignature());
-		req.addHeader("x-amz-date", d);
+		req.header("x-amz-date", d);
 	}
 	
 }

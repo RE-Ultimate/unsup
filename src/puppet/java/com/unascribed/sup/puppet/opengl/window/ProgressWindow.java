@@ -84,6 +84,9 @@ public class ProgressWindow extends Window {
 	protected synchronized void onWindowCloseRequest() {
 		if (offerChangeFlavors != 0) {
 			offerChangeFlavors = System.nanoTime()-OFFER_DELAY;
+			Puppet.reportChoice(offerChangeFlavorsName, "option.no");
+			Puppet.exitOnDone = true;
+			Puppet.reportDone();
 		} else if (closeRequested) {
 			MessageDialogWindow diag = new MessageDialogWindow("puppet_busy_notice", "dialog.busy.title",
 					Translate.format("dialog.busy"), AlertMessageType.WARN, new String[] {"option.ok"}, "option.ok");

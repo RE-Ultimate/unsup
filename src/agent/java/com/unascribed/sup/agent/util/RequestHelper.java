@@ -50,9 +50,13 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
+
+import org.brotli.dec.BrotliInputStream;
 
 import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
@@ -72,10 +76,11 @@ import com.unascribed.sup.pieces.NullOutputStream;
 import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.SuppressFBWarnings;
 
-import okhttp3.HttpUrl;
-import okhttp3.Request;
-import okhttp3.Response;
-import okio.ByteString;
+import com.playsawdust.chipper.toolbox.io.Slice;
+
+import javahttpclient.HttpRequest;
+import javahttpclient.HttpResponse;
+import javahttpclient.HttpResponse.BodyHandlers;
 
 public class RequestHelper {
 	
@@ -170,7 +175,7 @@ public class RequestHelper {
 	private static String currentFirefoxVersion;
 	private static final Set<String> alwaysHostile = new HashSet<>(Arrays.asList(Bases.b64ToString("YmV0YS5jdXJzZWZvcmdlLmNvbXx3d3cuY3Vyc2Vmb3JnZS5jb218Y3Vyc2Vmb3JnZS5jb218bWluZWNyYWZ0LmN1cnNlZm9yZ2UuY29tfG1lZGlhZmlsZXouZm9yZ2VjZG4ubmV0fG1lZGlhZmlsZXMuZm9yZ2VjZG4ubmV0fGZvcmdlY2RuLm5ldHxlZGdlLmZvcmdlY2RuLm5ldHxzdGF0aWMucGxhbmV0bWluZWNyYWZ0LmNvbQ==").split("\\|")));
 	private static final Pattern RAW_GITHUB = Pattern.compile("^/([^/]+/[^/]+)/raw/(.*)$");
-	private static final ByteString LFS_HEADER = ByteString.encodeUtf8("version https://git-lfs.github.com/spec/v1");
+	private static final Slice LFS_HEADER = Slice.fromString("version https://git-lfs.github.com/spec/v1", StandardCharsets.UTF_8);
 	
 	@Desugar
 	public record ResourceRef(InputStream stream, OptionalLong size, boolean supportsRange) implements Closeable {
@@ -214,7 +219,7 @@ public class RequestHelper {
 					var corrected = new URI(url.getScheme(), url.getUserInfo(), "raw.githubusercontent.com", url.getPort(), "/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
 					Log.debug("Correcting bad 502-prone github.com/*/*/raw/ URL to raw.githubusercontent.com ("+url+" -> "+corrected+")");
 					try {
-						var header = ByteString.of(downloadToMemory(corrected, LFS_HEADER.size(), true));
+						var header = new Slice(downloadToMemory(corrected, LFS_HEADER.size(), true));
 						if (header.equals(LFS_HEADER)) {
 							Log.debug("Detected LFS header, correcting again to media.githubusercontent.com (-> "+corrected+")");
 							corrected = new URI(url.getScheme(), url.getUserInfo(), "media.githubusercontent.com", url.getPort(), "/media/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
@@ -249,18 +254,17 @@ public class RequestHelper {
 		final boolean fhostile = hostile;
 		return RequestHelper.withRetries(10, () -> {
 			try {
-				Request.Builder reqbldr = new Request.Builder()
-						.url(HttpUrl.get(url))
+				HttpRequest.Builder reqbldr = HttpRequest.newBuilder(url)
 						.header("User-Agent",
 								fhostile ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:"+currentFirefoxVersion+") Gecko/20100101 Firefox/"+currentFirefoxVersion
 								         : "unsup/"+Util.VERSION+" (+https://git.sleeping.town/unascribed/unsup)"
 							);
 				if (endAt > 0) {
-					reqbldr.addHeader("Range", "bytes="+startAt+"-"+endAt);
+					reqbldr.header("Range", "bytes="+startAt+"-"+endAt);
 				} else if (endAt < 0) {
-					reqbldr.addHeader("Range", "bytes"+endAt);
+					reqbldr.header("Range", "bytes"+endAt);
 				} else if (startAt != 0) {
-					reqbldr.addHeader("Range", "bytes="+startAt+"-");
+					reqbldr.header("Range", "bytes="+startAt+"-");
 				}
 				if (fhostile) {
 					reqbldr.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -275,18 +279,20 @@ public class RequestHelper {
 				}
 				if (endAt != 0) {
 					reqbldr.header("Accept-Encoding", "identity");
+				} else {
+					reqbldr.header("Accept-Encoding", "gzip, deflate, br");
 				}
-				Response res = Agent.okhttp().newCall(reqbldr.build()).execute();
-				if (res.code() != (startAt == 0 && endAt == 0 ? 200 : 206)) {
-					if (res.code() == 429) {
+				HttpResponse<InputStream> res = Agent.http().send(reqbldr.build(), BodyHandlers.ofInputStream());
+				if (res.statusCode() != (startAt == 0 && endAt == 0 ? 200 : 206)) {
+					if (res.statusCode() == 429) {
 						int delay = 0;
-						String val = res.header("Retry-After");
-						if (val != null) {
+						var val = res.headers().firstValue("Retry-After");
+						if (val.isPresent()) {
 							try {
-								delay = Integer.parseInt(val);
+								delay = Integer.parseInt(val.get());
 							} catch (NumberFormatException e) {
 								try {
-									var zdt = ZonedDateTime.parse(val, DateTimeFormatter.RFC_1123_DATE_TIME);
+									var zdt = ZonedDateTime.parse(val.get(), DateTimeFormatter.RFC_1123_DATE_TIME);
 									long l = Instant.now().until(zdt, ChronoUnit.SECONDS);
 									if (l < 0) l = 0;
 									if (l >= Integer.MAX_VALUE) l = Integer.MAX_VALUE;
@@ -300,26 +306,21 @@ public class RequestHelper {
 								new IOException(url.getHost()+" asked us to back off, but we're out of retries"))
 							.definedDelay(delay);
 					}
-					if (res.code() == 404 || res.code() == 410) throw new FileNotFoundException(url.toString());
-					String s = RequestHelper.collectLimited(res.body().byteStream(), 512)
+					if (res.statusCode() == 404 || res.statusCode() == 410) throw new FileNotFoundException(url.toString());
+					String s = RequestHelper.collectLimited(decompress(res), 512)
 							.map(b -> new String(b, StandardCharsets.UTF_8))
 							.orElse("(response too long)");
-					res.close();
-					if (res.code()/100 == 500) {
-						throw new Retry(url.getHost()+" responded with a server error for "+url+" ("+res.code()+")",
-								new IOException("Received non-200 response from server for "+url+": "+res.code()+"\n"+s));
+					if (res.statusCode()/100 == 500) {
+						throw new Retry(url.getHost()+" responded with a server error for "+url+" ("+res.statusCode()+")",
+								new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s));
 					} else {
-						throw new IOException("Received non-200 response from server for "+url+": "+res.code()+"\n"+s);
+						throw new IOException("Received non-200 response from server for "+url+": "+res.statusCode()+"\n"+s);
 					}
 				}
-				long len = res.body().contentLength();
-				boolean supportsRange = "identity".equals(res.header("Content-Encoding", "identity"))
-						&& "bytes".equals(res.header("Accept-Ranges"));
-				if (len == -1) {
-					return new ResourceRef(res.body().byteStream(), supportsRange);
-				} else {
-					return new ResourceRef(res.body().byteStream(), len, supportsRange);
-				}
+				var len = res.headers().firstValueAsLong("Content-Length");
+				boolean supportsRange = "identity".equals(res.headers().firstValue("Content-Encoding").orElse("identity"))
+						&& "bytes".equals(res.headers().firstValue("Accept-Ranges").orElse(""));
+				return new ResourceRef(decompress(res), len, supportsRange);
 			} catch (InterruptedIOException e) {
 				throw new Retry("Connection to "+url.getHost()+" timed out",
 						e);
@@ -365,6 +366,17 @@ public class RequestHelper {
 		});
 	}
 	
+	private static @NotNull InputStream decompress(HttpResponse<InputStream> res) throws IOException {
+		return switch (res.headers().firstValue("Content-Encoding").orElse("identity")) {
+			case "", "identity" -> res.body();
+			case "deflate" -> new InflaterInputStream(res.body());
+			case "gzip" -> new GZIPInputStream(res.body());
+			case "br" -> new BrotliInputStream(res.body());
+			case "zstd" -> throw new IllegalArgumentException("We lied about supporting zstd to look like a browser, and the remote host called our bluff!");
+			default -> throw new IllegalArgumentException("Unknown Content-Encoding");
+		};
+	}
+
 	public static class Retry extends Exception {
 		private int definedDelay = 0;
 		

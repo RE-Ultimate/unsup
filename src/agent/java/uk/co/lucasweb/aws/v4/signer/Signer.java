@@ -20,8 +20,7 @@ import com.unascribed.sup.util.Bases;
 
 import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
 
-import okhttp3.Request;
-
+import javahttpclient.HttpRequest;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -142,7 +141,7 @@ public class Signer {
 			return this;
 		}
 
-		public Signer build(Request request, String service, String contentSha256) {
+		public Signer build(HttpRequest request, String service, String contentSha256) {
 			CanonicalHeaders canonicalHeaders = getCanonicalHeaders();
 			String date = canonicalHeaders.getFirstValue(X_AMZ_DATE)
 					.orElseThrow(() -> new RuntimeException("headers missing '" + X_AMZ_DATE + "' header"));

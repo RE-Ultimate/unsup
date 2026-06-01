@@ -19,7 +19,7 @@
 
 package com.unascribed.sup.agent.auth;
 
-import okhttp3.Request;
+import javahttpclient.HttpRequest;
 
 public abstract class AbstractStaticHeaderAuthorizer implements Authorizer {
 
@@ -31,8 +31,8 @@ public abstract class AbstractStaticHeaderAuthorizer implements Authorizer {
 	}
 	
 	@Override
-	public void authorize(Request orig, Request.Builder req) {
-		req.addHeader(key, value);
+	public void authorize(HttpRequest orig, HttpRequest.Builder req) {
+		req.header(key, value);
 	}
 	
 }

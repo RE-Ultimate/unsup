@@ -20,18 +20,15 @@
 package com.unascribed.sup.agent;
 
 import java.io.ByteArrayInputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -40,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
-
 import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.agent.auth.Authorizer;
 import com.unascribed.sup.agent.auth.Authorizer.AuthorizerSpec;
@@ -64,11 +59,6 @@ import com.playsawdust.chipper.toolbox.collect.ro.ROMap;
 import com.playsawdust.chipper.toolbox.collect.ro.ROSet;
 import com.playsawdust.chipper.toolbox.collect.ro.ReadOnly;
 
-import okhttp3.Dns;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.dnsoverhttps.DnsOverHttps;
-
 /**
  * An immutable snapshot of an "effective configuration", pulled from the config file (unsup.ini),
  * system properties, heuristics, etc.
@@ -82,7 +72,6 @@ public record Config(
 		boolean updateMMCPack, boolean noGui,
 		@NotNull String initialSubtitle,
 		@NotNull ROList<AuthorizerSpec> authorizers,
-		@NotNull Function<OkHttpClient, @NotNull Dns> dnsBuilder,
 		@NotNull ROMap<String, String> defaultFlavors,
 		@Nullable SigProvider packSig, @Nullable SigProvider altPackSig,
 		@NotNull Multimap<String, String> mmcComponentMap,
@@ -112,7 +101,6 @@ public record Config(
 			/*boolean noGui*/false,
 			/*String initialSubtitle*/"",
 			/*List<AuthorizerSpec> authorizers*/ReadOnly.list(),
-			/*Function<OkHttpClient, @NotNull Dns> dnsBuilder*/c -> Dns.SYSTEM,
 			/*Map<String, String> defaultFlavors*/ReadOnly.map(),
 			/*@Nullable SigProvider packSig*/null,
 			/*@Nullable SigProvider altPackSig*/null,
@@ -134,10 +122,6 @@ public record Config(
 		);
 	}
 
-	public Dns dns(OkHttpClient client) {
-		return dnsBuilder.apply(client);
-	}
-	
 	public static Config parse(QDIni config, @Nullable String arg, String lang) {
 		// this is kind of a mess, but it's also very direct.
 		// could smother it in reflection to make it more "elegant" but who fucking cares man
@@ -159,11 +143,6 @@ public record Config(
 		PuppetMode puppetMode = SysProps.PUPPET_MODE.orElse(config.getEnum("puppet_mode", PuppetMode.class, PuppetMode.AUTO));
 		SigProvider packSig = parsePackSig(config, "public_key");
 		SigProvider altPackSig = parsePackSig(config, "alt_public_key");
-		Function<OkHttpClient, Dns> dnsBuilder = parseDns(config.get("dns", "system"))
-			.orElseGet(() -> {
-				Log.error("Config file error: dns is not valid at "+config.getBlame("dns")+" - expected 'system', 'quad9', or an HTTPS URL, but got '"+config.get("dns")+"'! Exiting.");
-				throw ExitCode.CONFIG_ERROR.exit();
-			});
 		boolean noGui = determineNoGui(config);
 		boolean enforceSecureHashes = config.getBoolean("enforce_secure_hashes", false);
 		SourceFormat format = config.getEnum("source_format", SourceFormat.class, null);
@@ -364,53 +343,13 @@ public record Config(
 		
 		return new Config(enforceSecureHashes, useEnvs, detectedEnv, ReadOnly.copyOf(validEnvs),
 				behavior, offerChangeFlavors, format, source, serverAuthority, updateMMCPack, noGui,
-				initialSubtitle, ReadOnly.copyOf(authorizers), dnsBuilder,
+				initialSubtitle, ReadOnly.copyOf(authorizers),
 				ReadOnly.copyOf(defaultFlavors), packSig, altPackSig,
 				mmcComponentMap.unmodifiable(), ReadOnly.copyOf(colorChoices),
 				ReadOnly.copyOf(strings), modpackName, brandingIcon,
 				flavorDialogGeom, flavorDialogBias, puppetMode, lang, proxySelector,
 				ReadOnly.copyOf(additionalCaCerts), ReadOnly.copyOf(insecureHosts),
 				usePlatformCaCerts, useBuiltinCaCerts, autofix);
-	}
-
-	private static Optional<Function<OkHttpClient, @NotNull Dns>> parseDns(String v) {
-		switch (v) {
-			case "system" -> {
-				Log.debug("Using system DNS for DNS queries");
-				return Optional.of(client -> Dns.SYSTEM);
-			}
-			case "quad9" -> {
-				List<InetAddress> quad9Hosts;
-				try {
-					quad9Hosts = Arrays.asList(
-						InetAddress.getByName("9.9.9.10"),
-						InetAddress.getByName("2620:fe::10"),
-						InetAddress.getByName("149.112.112.10"),
-						InetAddress.getByName("2620:fe::fe:10")
-					);
-				} catch (UnknownHostException e) {
-					// not a possible throw for a well-formed IP string
-					throw new AssertionError(e);
-				}
-				Log.debug("Using Quad9 for DNS queries");
-				return Optional.of(client -> new DnsOverHttps.Builder()
-						.url(HttpUrl.get("https://dns10.quad9.net/dns-query"))
-						.bootstrapDnsHosts(quad9Hosts)
-						.client(client)
-						.build());
-			}
-			default -> {
-				if (v.startsWith("https://")) {
-					Log.debug("Using "+v+" for DNS queries");
-					return Optional.of(client -> new DnsOverHttps.Builder()
-							.url(HttpUrl.get(v))
-							.client(client)
-							.build());
-				} else {
-					return Optional.empty();
-				}
-			}
-		}
 	}
 
 	private static @Nullable SigProvider parsePackSig(QDIni config, String key) {

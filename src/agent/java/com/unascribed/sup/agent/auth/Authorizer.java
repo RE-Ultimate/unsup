@@ -23,11 +23,11 @@ import java.util.Optional;
 
 import com.github.bsideup.jabel.Desugar;
 
-import okhttp3.Request;
+import javahttpclient.HttpRequest;
 
 public interface Authorizer {
 
-	void authorize(Request orig, Request.Builder req);
+	void authorize(HttpRequest orig, HttpRequest.Builder req);
 
 	static Optional<Authorizer> parse(String v) {
 		String[] vspl = v.split(" ", 2);

@@ -23,9 +23,11 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import com.unascribed.sup.agent.data.HashFunction;
-import okio.ByteString;
+
+import com.playsawdust.chipper.toolbox.io.Slice;
 
 public class CorruptionHelper {
 
@@ -37,7 +39,7 @@ public class CorruptionHelper {
 		;
 	}
 	
-	private static final ByteString LFS_HEADER = ByteString.encodeUtf8("version https://git-lfs.github.com/spec/v1");
+	private static final Slice LFS_HEADER = Slice.fromString("version https://git-lfs.github.com/spec/v1", StandardCharsets.UTF_8);
 	
 	public static CorruptionType checkForCorruption(HashFunction func, String expectedHash, InputStream src) throws IOException {
 		if (func == null || expectedHash == null) return CorruptionType.UNKNOWN;
@@ -50,7 +52,7 @@ public class CorruptionHelper {
 		byte[] header = new byte[LFS_HEADER.size()];
 		src.mark(LFS_HEADER.size());
 		src.read(header); // guaranteed to read all bytes on a BAIS or BIS
-		if (ByteString.of(header).equals(LFS_HEADER)) {
+		if (new Slice(header).equals(LFS_HEADER)) {
 			return CorruptionType.LFS_POINTER;
 		}
 		src.reset();
