@@ -304,9 +304,9 @@ public class Agent {
 				URI uri;
 				try {
 					uri = new URI(SysProps.BOOTSTRAP_URL.get());
-					var censoredUserInfo = uri.getRawUserInfo();
+					var censoredUserInfo = uri.getUserInfo();
 					if (censoredUserInfo != null) censoredUserInfo = censoredUserInfo.replaceAll("[^:]", "*");
-					Log.info("No config found, bootstrapping from "+new URI(uri.getScheme(), censoredUserInfo, uri.getHost(), uri.getPort(), uri.getRawPath(), uri.getRawQuery(), uri.getRawFragment()));
+					Log.info("No config found, bootstrapping from "+new URI(uri.getScheme(), censoredUserInfo, uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment()));
 				} catch (URISyntaxException e) {
 					Log.error("Bootstrap error: failed to parse URL! Exiting.", e);
 					throw ExitCode.CONFIG_ERROR.exit();
