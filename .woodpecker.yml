@@ -87,4 +87,6 @@ steps:
 when:
   - branch: "trunk"
     event: push
+  - branch: "maint/1.2"
+    event: push
   - event: manual
