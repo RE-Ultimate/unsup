@@ -213,16 +213,16 @@ public class RequestHelper {
 			return new ResourceRef(fis, ch.size()-startAt, true);
 		}
 		if (Agent.config().autofix() && "github.com".equals(url.getHost())) {
-			var m = RAW_GITHUB.matcher(url.getRawPath());
+			var m = RAW_GITHUB.matcher(url.getPath());
 			if (m.matches()) {
 				try {
-					var corrected = new URI(url.getScheme(), url.getUserInfo(), "raw.githubusercontent.com", url.getPort(), "/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
+					var corrected = new URI(url.getScheme(), url.getUserInfo(), "raw.githubusercontent.com", url.getPort(), "/"+m.group(1)+"/"+m.group(2), url.getQuery(), url.getFragment());
 					Log.debug("Correcting bad 502-prone github.com/*/*/raw/ URL to raw.githubusercontent.com ("+url+" -> "+corrected+")");
 					try {
 						var header = new Slice(downloadToMemory(corrected, LFS_HEADER.size(), true));
 						if (header.equals(LFS_HEADER)) {
 							Log.debug("Detected LFS header, correcting again to media.githubusercontent.com (-> "+corrected+")");
-							corrected = new URI(url.getScheme(), url.getUserInfo(), "media.githubusercontent.com", url.getPort(), "/media/"+m.group(1)+"/"+m.group(2), url.getRawQuery(), url.getRawFragment());
+							corrected = new URI(url.getScheme(), url.getUserInfo(), "media.githubusercontent.com", url.getPort(), "/media/"+m.group(1)+"/"+m.group(2), url.getQuery(), url.getFragment());
 						}
 					} catch (IOException e) {
 						Log.debug("Exception while checking for LFS header, continuing without LFS check", e);
