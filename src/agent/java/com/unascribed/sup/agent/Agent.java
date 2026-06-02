@@ -86,9 +86,9 @@ import com.unascribed.sup.pieces.ExceptableRunnable;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Resources;
 
-import com.playsawdust.chipper.toolbox.Stopwatch;
-import com.playsawdust.chipper.toolbox.io.Slice;
-import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
+import diy.y2k.stator.Stopwatch;
+import diy.y2k.stator.io.Slice;
+import diy.y2k.stator.io.hash.StandardHashers;
 
 import javahttpclient.HttpClient;
 import javahttpclient.HttpClient.Redirect;

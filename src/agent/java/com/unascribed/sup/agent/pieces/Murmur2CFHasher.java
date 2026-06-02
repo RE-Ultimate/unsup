@@ -21,10 +21,10 @@ package com.unascribed.sup.agent.pieces;
 
 import com.unascribed.sup.util.Bases;
 
-import com.playsawdust.chipper.toolbox.io.Bytes;
-import com.playsawdust.chipper.toolbox.io.Hasher;
-import com.playsawdust.chipper.toolbox.io.MemoryOutputStream;
-import com.playsawdust.chipper.toolbox.io.Slice;
+import diy.y2k.stator.io.Bytes;
+import diy.y2k.stator.io.Hasher;
+import diy.y2k.stator.io.MemoryOutputStream;
+import diy.y2k.stator.io.Slice;
 
 /**
  * Implements CurseForge's variant of Murmur2, used for the hashes of particularly old files.

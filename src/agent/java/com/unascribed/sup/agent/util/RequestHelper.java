@@ -76,7 +76,7 @@ import com.unascribed.sup.pieces.NullOutputStream;
 import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.SuppressFBWarnings;
 
-import com.playsawdust.chipper.toolbox.io.Slice;
+import diy.y2k.stator.io.Slice;
 
 import javahttpclient.HttpRequest;
 import javahttpclient.HttpResponse;
@@ -269,15 +269,14 @@ public class RequestHelper {
 				if (fhostile) {
 					reqbldr.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 					reqbldr.header("Accept-Language", "en-US,en;q=0.9");
-					reqbldr.header("Accept-Encoding", "gzip, deflate, br, zstd");
+					reqbldr.header("Accept-Encoding", endAt != 0 ? "identity" : "gzip, deflate, br, zstd");
 					reqbldr.header("Sec-Fetch-Dest", "document");
 					reqbldr.header("Sec-Fetch-Mode", "navigate");
 					reqbldr.header("Sec-Fetch-Site", "cross-site");
 					reqbldr.header("Sec-Fetch-User", "?1");
 					reqbldr.header("Priority", "u=0, i");
 					reqbldr.header("TE", "trailers");
-				}
-				if (endAt != 0) {
+				} else if (endAt != 0) {
 					reqbldr.header("Accept-Encoding", "identity");
 				} else {
 					reqbldr.header("Accept-Encoding", "gzip, deflate, br");

@@ -24,8 +24,8 @@ import java.util.Map;
 import com.unascribed.sup.agent.Agent;
 import com.unascribed.sup.agent.Log;
 import com.unascribed.sup.agent.pieces.Murmur2CFHasher;
-import com.playsawdust.chipper.toolbox.io.Hasher;
-import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
+import diy.y2k.stator.io.Hasher;
+import diy.y2k.stator.io.hash.StandardHashers;
 
 public enum HashFunction {
 	MD5("MD5", StandardHashers.md5(), 128, true),

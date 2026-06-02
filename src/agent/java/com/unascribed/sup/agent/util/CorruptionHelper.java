@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 
 import com.unascribed.sup.agent.data.HashFunction;
 
-import com.playsawdust.chipper.toolbox.io.Slice;
+import diy.y2k.stator.io.Slice;
 
 public class CorruptionHelper {
 

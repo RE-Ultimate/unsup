@@ -34,7 +34,7 @@ import javax.net.ssl.SSLSession;
 import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.ann.NotNull;
 
-import com.playsawdust.chipper.toolbox.collect.ro.ReadOnly;
+import diy.y2k.stator.collect.ro.ReadOnly;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;

@@ -28,7 +28,7 @@ import java.util.Base64;
 import com.unascribed.sup.ann.NotNull;
 import com.unascribed.sup.util.Bases;
 
-import com.playsawdust.chipper.toolbox.io.Bytes;
+import diy.y2k.stator.io.Bytes;
 
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
 import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable;

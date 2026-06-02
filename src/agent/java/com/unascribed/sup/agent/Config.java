@@ -54,10 +54,10 @@ import com.unascribed.sup.util.Bases;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Strings;
 
-import com.playsawdust.chipper.toolbox.collect.ro.ROList;
-import com.playsawdust.chipper.toolbox.collect.ro.ROMap;
-import com.playsawdust.chipper.toolbox.collect.ro.ROSet;
-import com.playsawdust.chipper.toolbox.collect.ro.ReadOnly;
+import diy.y2k.stator.collect.ro.ROList;
+import diy.y2k.stator.collect.ro.ROMap;
+import diy.y2k.stator.collect.ro.ROSet;
+import diy.y2k.stator.collect.ro.ReadOnly;
 
 /**
  * An immutable snapshot of an "effective configuration", pulled from the config file (unsup.ini),
