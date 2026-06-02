@@ -45,7 +45,7 @@ public class Murmur2CFHasher implements Hasher {
 			private final MemoryOutputStream baos = new MemoryOutputStream();
 			
 			@Override
-			public void contribute(byte[] bytes, int offset, int length) {
+			public void putBytes(byte[] bytes, int offset, int length) {
 				for (int i = 0; i < length; i++) {
 					int b = bytes[offset+i]&0xFF;
 					if (b == 9 || b == 10 || b == 13 || b == 32) {
