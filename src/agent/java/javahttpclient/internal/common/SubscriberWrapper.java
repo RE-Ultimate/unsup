@@ -37,7 +37,7 @@ import javahttpclient.flow.Flow.Subscriber;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.unascribed.sup.ann.NotNull;
+import diy.y2k.unsup.ann.NotNull;
 
 /**
  * A wrapper for a Flow.Subscriber. This wrapper delivers data to the wrapped

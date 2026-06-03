@@ -34,8 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.unascribed.sup.ann.NotNull;
-
+import diy.y2k.unsup.ann.NotNull;
 import javahttpclient.HttpHeaders;
 import javahttpclient.HttpResponse;
 import javahttpclient.HttpResponse.BodySubscriber;

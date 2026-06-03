@@ -31,8 +31,8 @@ import java.util.ResourceBundle;
 import java.util.function.Supplier;
 
 import com.github.bsideup.jabel.Desugar;
-import com.unascribed.sup.agent.pieces.DummyLogger;
 
+import diy.y2k.unsup.agent.pieces.DummyLogger;
 import javahttpclient.internal.common.DebugLogger;
 
 /**

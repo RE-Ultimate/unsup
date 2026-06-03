@@ -26,7 +26,7 @@ package javahttpclient.internal.common;
 
 import java.time.Instant;
 
-import com.unascribed.sup.ann.NotNull;
+import diy.y2k.unsup.ann.NotNull;
 
 /**
  * A {@link TimeLine} based on {@link System#nanoTime()} for the

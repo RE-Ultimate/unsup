@@ -50,8 +50,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiPredicate;
 
-import com.unascribed.sup.ann.NotNull;
-
+import diy.y2k.unsup.ann.NotNull;
 import javahttpclient.HttpClient;
 import javahttpclient.HttpHeaders;
 import javahttpclient.HttpRequest;

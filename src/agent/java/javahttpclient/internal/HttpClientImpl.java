@@ -30,8 +30,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 
-import com.unascribed.sup.ann.NotNull;
-
+import diy.y2k.unsup.ann.NotNull;
 import javahttpclient.HttpClient;
 import javahttpclient.HttpConnectTimeoutException;
 import javahttpclient.HttpRequest;

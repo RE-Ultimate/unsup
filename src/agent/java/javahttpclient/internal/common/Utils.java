@@ -32,9 +32,9 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSession;
 
 import com.github.bsideup.jabel.Desugar;
-import com.unascribed.sup.ann.NotNull;
 
 import diy.y2k.stator.collect.ro.ReadOnly;
+import diy.y2k.unsup.ann.NotNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;

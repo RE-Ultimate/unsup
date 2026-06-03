@@ -1,0 +1,66 @@
+/*
+ * This file is part of unsup.
+ * Copyright © 2023, 2025-2026 Exa Skye
+ * https://git.sleeping.town/exa/unsup
+ *
+ * unsup is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * unsup is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with unsup; if not, see <https://www.gnu.org/licenses/>.
+ */
+
+package diy.y2k.unsup.agent.signing;
+
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+
+import diy.y2k.unsup.ann.NotNull;
+import net.i2p.crypto.eddsa.EdDSAEngine;
+import net.i2p.crypto.eddsa.EdDSAPublicKey;
+
+public class RawEdDSAProvider extends AbstractSigProvider {
+
+	private final ThreadLocal<EdDSAEngine> engine;
+	
+	public RawEdDSAProvider(String origin, EdDSAPublicKey key) throws InvalidKeyException {
+		super(origin);
+		new EdDSAEngine().initVerify(key);
+		this.engine = ThreadLocal.withInitial(() -> {
+			EdDSAEngine n = new EdDSAEngine();
+			try {
+				n.initVerify(key);
+				n.setParameter(EdDSAEngine.ONE_SHOT_MODE);
+			} catch (InvalidAlgorithmParameterException | InvalidKeyException e) {
+				throw new AssertionError(e);
+			}
+			return n;
+		});
+	}
+	
+	@Override
+	public int maximumSignatureLength() {
+		return 64;
+	}
+
+	@Override
+	public boolean verify(byte[] data, byte[] signature) throws SignatureException {
+		return engine.get().verifyOneShot(data, signature);
+	}
+
+	public static RawEdDSAProvider parse(String origin, @NotNull String key) throws InvalidKeyException, InvalidKeySpecException {
+		return new RawEdDSAProvider(origin, new EdDSAPublicKey(new X509EncodedKeySpec(Base64.getDecoder().decode(key))));
+	}
+	
+}

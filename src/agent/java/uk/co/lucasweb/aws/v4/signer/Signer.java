@@ -16,10 +16,9 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.github.bsideup.jabel.Desugar;
-import com.unascribed.sup.util.Bases;
 
 import diy.y2k.stator.io.hash.StandardHashers;
-
+import diy.y2k.unsup.util.Bases;
 import javahttpclient.HttpRequest;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

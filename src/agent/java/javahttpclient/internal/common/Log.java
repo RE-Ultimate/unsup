@@ -35,8 +35,7 @@ import java.util.function.Supplier;
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLParameters;
 
-import com.unascribed.sup.agent.pieces.DummyLogger;
-
+import diy.y2k.unsup.agent.pieces.DummyLogger;
 import javahttpclient.HttpHeaders;
 import javahttpclient.internal.frame.DataFrame;
 import javahttpclient.internal.frame.Http2Frame;

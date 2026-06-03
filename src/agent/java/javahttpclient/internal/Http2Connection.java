@@ -55,8 +55,8 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 
 import com.github.bsideup.jabel.Desugar;
-import com.unascribed.sup.ann.NotNull;
 
+import diy.y2k.unsup.ann.NotNull;
 import javahttpclient.HttpClient;
 import javahttpclient.HttpConnectTimeoutException;
 import javahttpclient.HttpHeaders;

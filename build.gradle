@@ -37,11 +37,11 @@ plugins {
 	id 'maven-publish'
 }
 
-import com.unascribed.sup.PlatDetect;
-import com.unascribed.sup.PlatDetect.OSType;
-import com.unascribed.sup.PlatDetect.ArchType;
-import com.unascribed.sup.build.*;
-import com.unascribed.sup.build.transformer.JarTransformer;
+import diy.y2k.unsup.PlatDetect;
+import diy.y2k.unsup.PlatDetect.OSType;
+import diy.y2k.unsup.PlatDetect.ArchType;
+import diy.y2k.unsup.build.*;
+import diy.y2k.unsup.build.transformer.JarTransformer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.format.DateTimeFormatter;
@@ -133,9 +133,9 @@ task computeFileDates {
 			def uncreditedAuthors = [
 				// due to Weblate squash commits addon, which i have since uninstalled
 				// this can get removed once all the translations get updated
-				'src/main/resources/com/unascribed/sup/presets/lang/nb-NO.ini': ['Artemis'],
-				'src/main/resources/com/unascribed/sup/presets/lang/ko.ini': ['Skye'],
-				'src/main/resources/com/unascribed/sup/presets/lang/tok.ini': ['Jo Null'],
+				'src/main/resources/diy/y2k/unsup/presets/lang/nb-NO.ini': ['Artemis'],
+				'src/main/resources/diy/y2k/unsup/presets/lang/ko.ini': ['Skye'],
+				'src/main/resources/diy/y2k/unsup/presets/lang/tok.ini': ['Jo Null'],
 			]
 			
 			eachFile {
@@ -307,7 +307,7 @@ jar {
 	
 	def mapfile = file('build/tmp/proguard.map')
 	doFirst {
-		def pfx = 'com/unascribed/sup/lib/'
+		def pfx = 'diy/y2k/unsup/lib/'
 		def relocations = [
 			'com/grack/nanojson/': pfx+'nanojson/',
 			'com/moandjiezana/toml/': pfx+'toml/',
@@ -372,21 +372,21 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	
 	applymapping 'build/tmp/proguard.map'
 	
-	keep 'class com.unascribed.sup.agent.Bootstrap { *; }'
-	keep 'class com.unascribed.sup.agent.Agent { *; }'
-	keep 'class com.unascribed.sup.puppet.Bootstrap { *; }'
-	keep 'class com.unascribed.sup.puppet.Puppet { *; }'
-	keep 'class com.unascribed.sup.LibBootstrap* { *; }'
+	keep 'class diy.y2k.unsup.agent.Bootstrap { *; }'
+	keep 'class diy.y2k.unsup.agent.Agent { *; }'
+	keep 'class diy.y2k.unsup.puppet.Bootstrap { *; }'
+	keep 'class diy.y2k.unsup.puppet.Puppet { *; }'
+	keep 'class diy.y2k.unsup.LibBootstrap* { *; }'
 	keep 'class com.unascribed.sup.Unsup { *; }'
 	
 	keepclassmembers 'enum * { public static **[] values(); public static ** valueOf(java.lang.String); }'
 	keepclassmembernames 'class * { *; }'
 
-	dontwarn 'com.unascribed.sup.lib.**'
+	dontwarn 'diy.y2k.unsup.lib.**'
 	dontwarn 'org.jetbrains.annotations.**'
 	dontwarn 'org.lwjgl.**'
 	dontwarn 'javax.annotation.**'
-	dontwarn 'com.unascribed.sup.puppet.opengl.util.GL'
+	dontwarn 'diy.y2k.unsup.puppet.opengl.util.GL'
 	dontwarn 'sun.misc.**'
 	dontwarn 'okhttp3.internal.platform.**'
 	dontwarn 'lombok.**'
@@ -408,11 +408,11 @@ task dataJar(type: Jar) {
 	archiveFileName = 'data.jar'
 	destinationDirectory.set(file('build/tmp'))
 	
-	exclude 'com/unascribed/sup/lib/okhttp3/internal/platform/android/**'
-	exclude 'com/unascribed/sup/lib/okhttp3/internal/platform/Android*'
-	exclude 'com/unascribed/sup/lib/brotli/**'
-	exclude 'com/unascribed/sup/assets/fonts/locale/**'
-	exclude 'com/unascribed/sup/Unsup.class'
+	exclude 'diy/y2k/unsup/lib/okhttp3/internal/platform/android/**'
+	exclude 'diy/y2k/unsup/lib/okhttp3/internal/platform/Android*'
+	exclude 'diy/y2k/unsup/lib/brotli/**'
+	exclude 'diy/y2k/unsup/assets/fonts/locale/**'
+	exclude 'diy/y2k/unsup/Unsup.class'
 	
 	exclude '**/*.br'
 	
@@ -442,14 +442,14 @@ task proguardJar(type: Jar) {
 	dependsOn brotliDataJar
 	
 	from(zipTree('build/tmp/proguard.jar')) {
-		include 'com/unascribed/sup/bootstrap/**'
-		include 'com/unascribed/sup/*/Bootstrap.class'
-		include 'com/unascribed/sup/lib/brotli/**'
-		include 'com/unascribed/sup/Unsup.class'
+		include 'diy/y2k/unsup/bootstrap/**'
+		include 'diy/y2k/unsup/*/Bootstrap.class'
+		include 'diy/y2k/unsup/lib/brotli/**'
+		include 'diy/y2k/unsup/Unsup.class'
 		include '**/*.br'
 	}
 	from(file(dataJar.archivePath.toString()+'.br')) {
-		into 'com/unascribed/sup'
+		into 'diy/y2k/unsup'
 	}
 	
 	reproducibleFileOrder = true
@@ -463,8 +463,8 @@ task proguardJar(type: Jar) {
 
 	manifest {
 		attributes (
-			'Main-Class': 'com.unascribed.sup.agent.Bootstrap',
-			'Premain-Class': 'com.unascribed.sup.agent.Bootstrap',
+			'Main-Class': 'diy.y2k.unsup.agent.Bootstrap',
+			'Premain-Class': 'diy.y2k.unsup.agent.Bootstrap',
 			
 			'Implementation-Title': 'unsup',
 			'Implementation-Version': ver
@@ -526,7 +526,7 @@ ext.platforms.each { plat ->
 	generateBundles.dependsOn c
 }
 
-def prismFile = file('build/libs/com.unascribed.unsup.json')
+def prismFile = file('build/libs/diy.y2k.unsup.json')
 
 task generatePrismComponent(type: Copy) {
 	inputs.property 'version', project.version
