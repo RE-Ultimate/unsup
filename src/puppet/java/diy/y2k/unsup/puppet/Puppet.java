@@ -185,12 +185,12 @@ public class Puppet {
 						}
 						case "string" -> {
 							String[] spl = arg.split(":", 7);
-							var other = spl[6];
-							var zero = firstNonEmpty(spl[1], other);
-							var one = firstNonEmpty(spl[2], other);
-							var two = firstNonEmpty(spl[3], other);
-							var few = firstNonEmpty(spl[4], other);
-							var many = firstNonEmpty(spl[5], other);
+							var other = spl[6].replace("\r", ":");
+							var zero = firstNonEmpty(spl[1].replace("\r", ":"), other);
+							var one = firstNonEmpty(spl[2].replace("\r", ":"), other);
+							var two = firstNonEmpty(spl[3].replace("\r", ":"), other);
+							var few = firstNonEmpty(spl[4].replace("\r", ":"), other);
+							var many = firstNonEmpty(spl[5].replace("\r", ":"), other);
 							Translate.addTranslation(spl[0], new PluralStrings(zero, one, two, few, many, other));
 							continue;
 						}

@@ -50,6 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.brotli.dec.BrotliInputStream;
@@ -63,6 +64,8 @@ import diy.y2k.stator.concurrent.Latch;
 import diy.y2k.unsup.PlatDetect;
 import diy.y2k.unsup.PlatDetect.ArchType;
 import diy.y2k.unsup.PlatDetect.OSType;
+import diy.y2k.unsup.agent.pieces.pseudolocale.AccentedEnglish;
+import diy.y2k.unsup.agent.pieces.pseudolocale.PigLatin;
 import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.bootstrap.Bootstrapper;
 import diy.y2k.unsup.bootstrap.Util;
@@ -495,12 +498,28 @@ public class PuppetHandler {
 		}
 		var langOut = new HashMap<String, String>();
 		langOut.putAll(loadLang("en-US"));
-		if (!"en-US".equals(lang)) langOut.putAll(loadLang(lang));
+		Function<String, String> pseudolocale = null;
+		switch (lang) {
+			case "en-US" -> {}
+			case "en-XA" -> pseudolocale = AccentedEnglish::toEnXA;
+			case "en-PIG" -> pseudolocale = PigLatin::toPigLatin;
+			default -> langOut.putAll(loadLang(lang));
+		}
+		if (pseudolocale != null) {
+			for (var en : langOut.entrySet()) {
+				String[] spl = en.getValue().split(":");
+				var sj = new StringJoiner(":");
+				for (var v : spl) {
+					sj.add(pseudolocale.apply(v));
+				}
+				en.setValue(sj.toString());
+			}
+		}
 		for (var en : Agent.config().strings().entrySet()) {
-			langOut.put(en.getKey(), ":string="+en.getKey()+"::::::"+en.getValue());
+			langOut.put(en.getKey(), ":::::"+en.getValue().replace(":", "\r"));
 		}
 		for (var en : langOut.entrySet()) {
-			tellPuppet(en.getValue());
+			tellPuppet(":string="+en.getKey()+":"+en.getValue());
 		}
 		Agent.config().modpackName().ifPresent(name -> {
 			tellPuppet(":modpackName="+name);
@@ -514,10 +533,15 @@ public class PuppetHandler {
 	
 	private static Map<String, String> loadLang(String lang) {
 		try {
+			var res = PuppetHandler.class.getResource("/diy/y2k/unsup/lang/"+lang+".json");
+			if (res == null) {
+				Log.debug(lang+" translations do not exist");
+				return Collections.emptyMap();
+			}
 			var out = new HashMap<String, String>();
 			String[] plurals = {"zero", "one", "two", "few", "many", "other"};
 			String[] values = new String[plurals.length];
-			JsonObject obj = JsonParser.object().from(PuppetHandler.class.getResource("/diy/y2k/unsup/lang/"+lang+".json"));
+			JsonObject obj = JsonParser.object().from(res);
 			for (var en : obj.entrySet()) {
 				if (en.getValue() instanceof JsonObject jo) {
 					for (int i = 0; i < plurals.length; i++) {
@@ -527,9 +551,8 @@ public class PuppetHandler {
 					Arrays.fill(values, "");
 					values[5] = String.valueOf(en.getValue());
 				}
-				var sj = new StringJoiner(":", ":string=", "");
-				sj.add(en.getKey());
-				for (var v : values) sj.add(v);
+				var sj = new StringJoiner(":");
+				for (var v : values) sj.add(v.replace(":", "\r"));
 				out.put(en.getKey(), sj.toString());
 			}
 			Log.debug("Loaded "+obj.size()+" translations for "+lang+" into puppet");

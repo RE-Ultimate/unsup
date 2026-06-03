@@ -24,7 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PigLatin {
-	private static final Pattern WORD = Pattern.compile("[A-Za-z]+");
+	private static final Pattern WORD = Pattern.compile("([A-Za-z]+)($|[ -_.?,!…)]|\\n)");
 	private static final Pattern ALL_CAPS = Pattern.compile("^[A-Z]{2,}$");
 	private static final Pattern PROPER_CASE = Pattern.compile("^[A-Z][a-z]*$");
 
@@ -34,13 +34,13 @@ public class PigLatin {
 		var sb = new StringBuffer();
 		Matcher m = WORD.matcher(s);
 		while (m.find()) {
-			String english = m.group().toLowerCase(Locale.ENGLISH);
+			String english = m.group(1).toLowerCase(Locale.ENGLISH);
 			String pigLatin;
 			Matcher vowelM = VOWEL.matcher(english);
 			if (!vowelM.find()) {
 				// must not be a real word
 				// just pass it through
-				pigLatin = m.group();
+				pigLatin = english;
 			} else {
 				int firstVowel = vowelM.start();
 				if (firstVowel == 0) {
@@ -66,12 +66,12 @@ public class PigLatin {
 					pigLatin = kept+displaced+"ay";
 				}
 			}
-			if (ALL_CAPS.matcher(m.group()).matches()) {
+			if (ALL_CAPS.matcher(m.group(1)).matches()) {
 				pigLatin = pigLatin.toUpperCase(Locale.ENGLISH);
-			} else if (PROPER_CASE.matcher(m.group()).matches()) {
+			} else if (PROPER_CASE.matcher(m.group(1)).matches()) {
 				pigLatin = Character.toUpperCase(pigLatin.charAt(0))+pigLatin.substring(1);
 			}
-			m.appendReplacement(sb, pigLatin);
+			m.appendReplacement(sb, pigLatin+"$2");
 		}
 		m.appendTail(sb);
 		return sb.toString();

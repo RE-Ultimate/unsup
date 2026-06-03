@@ -38,7 +38,7 @@ public class AccentedEnglish {
 	
 	private static final String symbols = "!@#$^&*()_+-=[]\\{}|;':\",./<>?";
 	
-	private static final Pattern FORMAT = Pattern.compile("%([0-9]+\\$)?.");
+	private static final Pattern FORMAT = Pattern.compile("\\{\\{\\.([^}]+)\\}\\}");
 	
 	public static String toEnXA(String str) {
 		List<String> formats = new ArrayList<>();
