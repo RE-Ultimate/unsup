@@ -62,7 +62,7 @@
 	"dialog.conflict.aside_trailer": "\n\nIf you choose Yes, a copy of the current file will be created at {{.filepath}}.orig.",
 	
 	"dialog.conflict.revised.body": "What would you like to do?\nNo files have been changed yet.",
-	"dialog.conflict.revised.aside_trailer": "\n\nA copy of the current file will be created at %1$s.orig.",
+	"dialog.conflict.revised.aside_trailer": "\n\nA copy of the current file will be created at {{.filepath}}.orig.",
 	
 	"dialog.conflict.revised.local_and_remote_created.option.yes": "Update",
 	"dialog.conflict.revised.local_and_remote_created.option.no": "Keep",
