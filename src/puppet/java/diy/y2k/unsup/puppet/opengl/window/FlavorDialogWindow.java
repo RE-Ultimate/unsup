@@ -168,7 +168,7 @@ public class FlavorDialogWindow extends Window {
 	}
 	
 	public void create(Window parent, double dpiScale) {
-		create(parent, Translate.format("dialog.flavors.title"), Puppet.flavorDialogWidth, Puppet.flavorDialogHeight, dpiScale);
+		create(parent, Translate.get("dialog.flavors.title").toString(), Puppet.flavorDialogWidth, Puppet.flavorDialogHeight, dpiScale);
 	}
 	
 	@Override
@@ -469,7 +469,7 @@ public class FlavorDialogWindow extends Window {
 			if (target == -1) {
 				glColor(ColorChoice.SUBTITLE);
 				float textX = width-rightArea+8;
-				font.drawWrapped(Face.ITALIC, textX, textX, 24, 16, rightArea-16, Translate.format("flavor.hover_notice"));
+				font.drawWrapped(Face.ITALIC, textX, textX, 24, 16, rightArea-16, Translate.get("flavor.hover_notice").toString());
 			} else {
 				FlavorGroup grp = flavors.get(target);
 				int subtarget = grp.isBoolean() ? -1 : preferKeyboard ? getSelectedIndex(grp) : subhovered;
@@ -491,7 +491,7 @@ public class FlavorDialogWindow extends Window {
 				drawNode(state, descriptionDocuments.computeIfAbsent(html, FlavorDialogWindow::parseXHTML));
 			}
 			
-			String done = Translate.format("option.done");
+			String done = Translate.get("option.done").toString();
 			float doneW = font.measureString(Face.REGULAR, 12, done);
 			float btnW = doneW+24;
 			float btnX = width-(btnW+8);

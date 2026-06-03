@@ -86,6 +86,8 @@ public class RequestHelper {
 	public static final int K = 1024;
 	public static final int M = K*1024;
 	
+	public static volatile boolean TENACIOUS_MODE = false;
+	
 	public static final long ONE_SECOND_IN_NANOS = TimeUnit.SECONDS.toNanos(1);
 	
 	public static String checkSchemeMismatch(URI src, String url) throws URISyntaxException {
@@ -165,6 +167,7 @@ public class RequestHelper {
 				throw new Retry("Connection to "+url.getHost()+" timed out",
 						SocketTimeoutException::new);
 			} catch (ConnectException e) {
+				if (!TENACIOUS_MODE) throw e;
 				throw new Retry("Connection to "+url.getHost()+" failed",
 						ConnectException::new);
 			}
@@ -325,9 +328,11 @@ public class RequestHelper {
 				throw new Retry("Connection to "+url.getHost()+" timed out",
 						e);
 			} catch (UnknownHostException e) {
+				if (!TENACIOUS_MODE) throw e;
 				throw new Retry("DNS resolution of "+url.getHost()+" failed",
 						e);
 			} catch (ConnectException e) {
+				if (!TENACIOUS_MODE) throw e;
 				throw new Retry("Connection to "+url.getHost()+" failed",
 						ConnectException::new);
 			} catch (SSLHandshakeException e) {

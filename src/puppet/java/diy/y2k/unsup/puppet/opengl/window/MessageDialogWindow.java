@@ -73,7 +73,7 @@ public class MessageDialogWindow extends Window {
 			options = new String[] {"option.yes", "option.no", "option.to_all", "option.cancel"};
 		}
 		this.name = name;
-		this.title = Translate.format(title);
+		this.title = Translate.get(title).toString();
 		this.messageType = messageType;
 		Matcher m = LEADIN_PATTERN.matcher(body);
 		if (REVISED_CONFLICT_UI && "dialog.conflict.title".equals(title) && m.find()) {
@@ -81,14 +81,19 @@ public class MessageDialogWindow extends Window {
 			String type = m.group(1);
 			body = body.replace("dialog.conflict.body", "dialog.conflict.revised.body").replace("dialog.conflict.aside_trailer", "dialog.conflict.revised.aside_trailer");
 			String pfx = "dialog.conflict.revised."+type+".";
-			this.options = Translate.format(new String[] {pfx+"option.yes", pfx+"option.no", "option.to_all", "option.abort"});
+			this.options = new String[] {
+				Translate.get(pfx+"option.yes").toString(),
+				Translate.get(pfx+"option.no").toString(),
+				Translate.get("option.to_all").toString(),
+				Translate.get("option.abort").toString()
+			};
 			highlighted = 0;
 		} else {
-			this.options = Translate.format(options);
+			this.options = new String[options.length];
 			for (int i = 0; i < options.length; i++) {
+				this.options[i] = Translate.get(options[i]).toString();
 				if (options[i].equals(def)) {
 					highlighted = i;
-					break;
 				}
 			}
 		}
@@ -96,7 +101,7 @@ public class MessageDialogWindow extends Window {
 			updateDialog = true;
 		}
 		this.optionsRaw = options;
-		this.bodyLines = Translate.format(body).split("\n");
+		this.bodyLines = Translate.get(body).toString().split("\n");
 		
 		this.bodyMeasurements = new float[bodyLines.length];
 		this.optionMeasurements = new float[options.length];

@@ -240,7 +240,7 @@ public class NativeHandler extends AbstractFormatHandler {
 				Log.info("Update available! We have "+ourVersion+", they have "+theirVersion);
 				if (!autoaccept) {
 					AlertOption updateResp = PuppetHandler.openAlert("dialog.update.title",
-							"dialog.update.named¤"+ ourVersion.name() +"¤"+ theirVersion.name(),
+							"dialog.update.named¤old_version="+ ourVersion.name() +"¤new_version="+ theirVersion.name(),
 							AlertMessageType.QUESTION, AlertOptionType.YES_NO, AlertOption.YES);
 					if (updateResp == AlertOption.CLOSED) {
 						Log.info("User closed update dialog! Exiting...");

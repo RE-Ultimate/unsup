@@ -247,7 +247,7 @@ public class UpdateHandler {
 					resp = conflictPreload.get(conflictType);
 				} else {
 					resp = PuppetHandler.openAlert("dialog.conflict.title",
-							"dialog.conflict.leadin."+conflictType.translationKey+"¤"+path+"¤dialog.conflict.body¤"+(dest.exists() ? "dialog.conflict.aside_trailer" : ""),
+							"dialog.conflict.leadin."+conflictType.translationKey+"¤filepath="+path+"¤body=dialog.conflict.body¤trailer="+(dest.exists() ? "dialog.conflict.aside_trailer" : ""),
 							AlertMessageType.QUESTION, AlertOptionType.YES_NO_TO_ALL_CANCEL, AlertOption.YES);
 					if (resp == AlertOption.NOTOALL) {
 						resp = AlertOption.NO;

@@ -6,5 +6,6 @@ font shaping such as combining diacritics or extended grapheme clusters. If you'
 for Minecraft, then this won't affect you.
 
 The OpenGL puppet presently does not support RTL languages - the font rendering engine needs to be
-reworked to use HarfBuzz instead of raw FreeType2. You can force the Swing puppet for your language
-by adding "puppet_mode=swing" before the "[strings]" line in your language file.
+reworked to use HarfBuzz instead of raw FreeType2.
+
+Syntax is compatible with go-i18n v2 JSON files: https://docs.weblate.org/en/weblate-5.12.2/formats/go-i18n.html

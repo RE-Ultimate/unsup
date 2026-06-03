@@ -28,13 +28,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -51,6 +54,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.brotli.dec.BrotliInputStream;
 
+import com.grack.nanojson.JsonObject;
+import com.grack.nanojson.JsonParser;
+import com.grack.nanojson.JsonParserException;
 import com.unascribed.flexver.FlexVerComparator;
 
 import diy.y2k.stator.concurrent.Latch;
@@ -74,6 +80,8 @@ public class PuppetHandler {
 	private static final LinkedBlockingQueue<String> commandQueue = new LinkedBlockingQueue<>();
 	
 	private static volatile boolean destroyed = false;
+	
+	private static String lang;
 	
 	private static String title;
 	private static int lastReportedProgress = 0;
@@ -143,6 +151,34 @@ public class PuppetHandler {
 				puppet = null;
 				puppetCrashed();
 			} else {
+				if (SysProps.LANGUAGE.isPresent()) {
+					lang = SysProps.LANGUAGE.orBias();
+					Log.info("Language: "+lang+" (system property)");
+				} else {
+					// MultiMC and derivatives force -Duser.language=en because anglophones piss their
+					// pants if they see a log file that isn't in English. fork a process that doesn't
+					// have tainted system properties to look up the actual fucking system language. i
+					// can't believe we have to do this shit what the fuck are we even doing man
+					try {
+						Process langProcess = new ProcessBuilder(java, "-Xint", "-cp", ourPath.getAbsolutePath(), "diy.y2k.unsup.LangPrinter")
+								.start();
+						langProcess.getOutputStream().close();
+						langProcess.getErrorStream().close();
+						try (var r = new BufferedReader(new InputStreamReader(langProcess.getInputStream(), StandardCharsets.UTF_8))) {
+							var line = r.readLine();
+							if (line != null) {
+								Log.info("Language: "+line+" (detected)");
+								lang = line;
+							} else {
+								Log.info("Language: en-US (fallback)");
+								lang = "en-US";
+							}
+						}
+					} catch (Throwable t) {
+						lang = "en-US";
+						Log.error("Failed to detect language, using en-US", t);
+					}
+				}
 				Process p;
 				try {
 					List<String> args = new ArrayList<>();
@@ -154,7 +190,7 @@ public class PuppetHandler {
 					args.add("-XX:+IgnoreUnrecognizedVMOptions");
 					args.add("-XX:+UnlockDiagnosticVMOptions");
 					args.add("-Djbr.catch.SIGABRT=true");
-					args.add("-D"+SysPropDefs.LANGUAGE+"="+Agent.config().lang());
+					args.add("-D"+SysPropDefs.LANGUAGE+"="+lang);
 					args.add("-D"+SysPropDefs.PUPPET_MODE+"="+Agent.config().puppetMode());
 					if (FlexVerComparator.compare(System.getProperty("java.version"), "17") >= 0) {
 						args.add("--enable-native-access=ALL-UNNAMED");
@@ -194,14 +230,15 @@ public class PuppetHandler {
 									futures.add(svc.submit(() -> {
 										return obtainAsset(cacheDir, "bundles/"+bundleVersion+"/"+os+"-"+arch);
 									}));
-									var lang = Agent.config().lang();
-									switch (lang) {
-										case "ja", "ko", "zh-CN", "zh-HK", "zh-TW" -> {
-											Log.info("Retrieving "+lang+" support fonts...");
-											futures.add(svc.submit(() -> {
-												return obtainAsset(cacheDir, "localefonts/"+lang);
-											}));
-										}
+									String localefonts = switch (lang) {
+										case "ja", "ko", "zh-CN", "zh-HK", "zh-TW" -> lang;
+										default -> null;
+									};
+									if (localefonts != null) {
+										Log.info("Retrieving "+lang+" support fonts...");
+										futures.add(svc.submit(() -> {
+											return obtainAsset(cacheDir, "localefonts/"+localefonts);
+										}));
 									}
 									Log.info("Retrieving default fonts...");
 									futures.add(svc.submit(() -> {
@@ -415,6 +452,15 @@ public class PuppetHandler {
 	}
 
 	private static File obtainAsset(File cacheDir, String url) throws IOException {
+		try {
+			return obtainAsset(cacheDir, url, "unsup.y2k.diy");
+		} catch (ConnectException | UnknownHostException e) {
+			Log.warn("Connection failed, trying again with non-CDN domain");
+			return obtainAsset(cacheDir, url, "exa.y2k.diy/unsup");
+		}
+	}
+	
+	private static File obtainAsset(File cacheDir, String url, String host) throws IOException {
 		final int M = 1024*1024;
 		
 		String fname = url.replace("/", "-");
@@ -426,8 +472,8 @@ public class PuppetHandler {
 			Log.debug("Got "+fname+" from cache");
 		}
 		if (needsDownload) {
-			Log.info("Downloading "+fname+" from unsup.y2k.diy...");
-			String dlBase = "https://unsup.y2k.diy/assets/v1/"+url;
+			Log.info("Downloading "+fname+" from "+host+"...");
+			String dlBase = "https://"+host+"/assets/v1/"+url;
 			URI dl = URI.create(dlBase+".jar.br");
 			URI sig = URI.create(dlBase+".sig");
 			Files.createDirectories(cacheDir.toPath());
@@ -447,8 +493,14 @@ public class PuppetHandler {
 		for (var en : Agent.config().colorChoices().entrySet()) {
 			tellPuppet(":color="+en.getKey().name()+":"+en.getValue());
 		}
+		var langOut = new HashMap<String, String>();
+		langOut.putAll(loadLang("en-US"));
+		if (!"en-US".equals(lang)) langOut.putAll(loadLang(lang));
 		for (var en : Agent.config().strings().entrySet()) {
-			tellPuppet(":string="+en.getKey()+":"+en.getValue());
+			langOut.put(en.getKey(), ":string="+en.getKey()+"::::::"+en.getValue());
+		}
+		for (var en : langOut.entrySet()) {
+			tellPuppet(en.getValue());
 		}
 		Agent.config().modpackName().ifPresent(name -> {
 			tellPuppet(":modpackName="+name);
@@ -458,6 +510,34 @@ public class PuppetHandler {
 		});
 		tellPuppet(":flavorDialogGeom="+Agent.config().flavorDialogGeom());
 		tellPuppet(":flavorDialogBias="+Agent.config().flavorDialogBias());
+	}
+	
+	private static Map<String, String> loadLang(String lang) {
+		try {
+			var out = new HashMap<String, String>();
+			String[] plurals = {"zero", "one", "two", "few", "many", "other"};
+			String[] values = new String[plurals.length];
+			JsonObject obj = JsonParser.object().from(PuppetHandler.class.getResource("/diy/y2k/unsup/lang/"+lang+".json"));
+			for (var en : obj.entrySet()) {
+				if (en.getValue() instanceof JsonObject jo) {
+					for (int i = 0; i < plurals.length; i++) {
+						values[i] = jo.getString(plurals[i], "");
+					}
+				} else {
+					Arrays.fill(values, "");
+					values[5] = String.valueOf(en.getValue());
+				}
+				var sj = new StringJoiner(":", ":string=", "");
+				sj.add(en.getKey());
+				for (var v : values) sj.add(v);
+				out.put(en.getKey(), sj.toString());
+			}
+			Log.debug("Loaded "+obj.size()+" translations for "+lang+" into puppet");
+			return out;
+		} catch (JsonParserException e) {
+			Log.error("Failed to load language "+lang, e);
+			return Collections.emptyMap();
+		}
 	}
 
 	public static void tellPuppet(String order) {

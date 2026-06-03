@@ -51,7 +51,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.CertPathTrustManagerParameters;
@@ -76,8 +75,6 @@ import diy.y2k.unsup.agent.auth.Authorizer;
 import diy.y2k.unsup.agent.auth.Authorizer.AuthorizerSpec;
 import diy.y2k.unsup.agent.pieces.QDIni;
 import diy.y2k.unsup.agent.pieces.QDIni.QDIniException;
-import diy.y2k.unsup.agent.pieces.pseudolocale.AccentedEnglish;
-import diy.y2k.unsup.agent.pieces.pseudolocale.PigLatin;
 import diy.y2k.unsup.agent.signing.SigProvider;
 import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.ann.NotNull;
@@ -186,6 +183,10 @@ public class Agent {
 			}
 			PuppetHandler.tellPuppet("[openTimeout]"+delay+":visible=true");
 			
+			// now that we're done with operations we prefer to quickly fail, turn on retries
+			// for DNS resolution and connection failures
+			RequestHelper.TENACIOUS_MODE = true;
+			
 			UpdateHandler.checkForUpdate(state, config().format(), config().source(),
 					!config().behavior().promptUpdates(),
 					SysProps.DRY_RUN.orBias(),
@@ -241,15 +242,13 @@ public class Agent {
 	}
 
 	private static boolean preinit(String arg) {
-		String lang = SysProps.LANGUAGE.orBias();
-		Log.debug("Language: "+lang);
-		var ini = loadConfig(lang);
+		var ini = loadConfig();
 		if (ini == null) {
 			Log.warn("Cannot find a config file, giving up.");
 			// by returning but not exiting, we yield control to the program whose launch we hijacked, if any
 			return false;
 		}
-		config = Config.parse(ini, arg, lang);
+		config = Config.parse(ini, arg);
 		
 		setupHttp(Optional.empty());
 		
@@ -267,7 +266,7 @@ public class Agent {
 		return true;
 	}
 	
-	private static QDIni loadConfig(String lang) {
+	private static QDIni loadConfig() {
 		File configFile = new File("unsup.ini");
 		if (configFile.exists()) {
 			QDIni ini;
@@ -284,25 +283,6 @@ public class Agent {
 			if (version != 1) {
 				Log.error("Config file error: Unknown version "+version+" at "+ini.getBlame("version")+"! Exiting.");
 				throw ExitCode.CONFIG_ERROR.exit();
-			}
-			if (!"en-US".equals(lang)) {
-				ini = mergePreset(ini, "lang/"+lang, false);
-			}
-			ini = mergePreset(ini, "lang/en-US", true);
-			Function<String, String> pseudolocale = null;
-			if ("en-PIG".equals(lang)) {
-				pseudolocale = PigLatin::toPigLatin;
-			} else if ("en-XA".equals(lang)) {
-				pseudolocale = AccentedEnglish::toEnXA;
-			}
-			if (pseudolocale != null) {
-				StringBuilder sb = new StringBuilder();
-				for (String k : ini.keySet()) {
-					if (k.startsWith("strings.")) {
-						sb.append(k).append("=").append(pseudolocale.apply(ini.get(k))).append("\n");
-					}
-				}
-				ini = ini.merge(QDIni.load("<pseudolocale>", sb.toString()));
 			}
 			ini = mergePreset(ini, "__global__", true);
 			if (ini.containsKey("preset")) {
@@ -340,7 +320,6 @@ public class Agent {
 				} else {
 					auth = Optional.empty();
 				}
-				System.out.println(auth);
 				setupHttp(auth);
 				int M = 1024*1024;
 				try {
@@ -349,7 +328,7 @@ public class Agent {
 					Files.write(configFile.toPath(), data);
 					Log.info("Successfully downloaded bootstrap config");
 					destroyHttp(false);
-					return loadConfig(lang);
+					return loadConfig();
 				} catch (Exception e) {
 					Log.error("Bootstrap error: Download failed! Exiting.", e);
 					throw ExitCode.BOOTSTRAP_FAILED.exit();

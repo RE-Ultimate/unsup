@@ -353,6 +353,7 @@ jar {
 			'diy/y2k/stator/': pfx+'stator/',
 			'link/e4mc/covenant/': pfx+'covenant/',
 			'javahttpclient/': pfx+'javahttpclient/',
+			'net/xyzsd/plurals/': pfx+'plurals/',
 		]
 		
 		mapfile.text = ""
@@ -446,7 +447,8 @@ task dataJar(type: Jar) {
 	exclude 'diy/y2k/unsup/lib/okhttp3/internal/platform/Android*'
 	exclude 'diy/y2k/unsup/lib/brotli/**'
 	exclude 'diy/y2k/unsup/assets/fonts/locale/**'
-	exclude 'diy/y2k/unsup/Unsup.class'
+	exclude 'com/unascribed/sup/Unsup.class'
+	exclude 'diy/y2k/unsup/LangPrinter.class'
 	
 	exclude '**/*.br'
 	
@@ -479,7 +481,8 @@ task proguardJar(type: Jar) {
 		include 'diy/y2k/unsup/bootstrap/**'
 		include 'diy/y2k/unsup/*/Bootstrap.class'
 		include 'diy/y2k/unsup/lib/brotli/**'
-		include 'diy/y2k/unsup/Unsup.class'
+		include 'com/unascribed/sup/Unsup.class'
+		include 'diy/y2k/unsup/LangPrinter.class'
 		include '**/*.br'
 	}
 	from(file(dataJar.archivePath.toString()+'.br')) {

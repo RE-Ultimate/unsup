@@ -165,7 +165,7 @@ public class GLPuppet {
 			@Override
 			public void build() {
 				Puppet.runOnMainThread(() -> {
-					mainWindow.create(null, Translate.format("dialog.progress.title", Util.VERSION), 480, 80, dpiScale);
+					mainWindow.create(null, Translate.get("dialog.progress.title").with("version", Util.VERSION).toString(), 480, 80, dpiScale);
 					buildLatch.release();
 				});
 			}
@@ -184,7 +184,7 @@ public class GLPuppet {
 			@Override
 			public void setTitle(String title) {
 				synchronized (mainWindow) {
-					mainWindow.title = Translate.format(title);
+					mainWindow.title = Translate.get(title).toString();
 					mainWindow.needsFullRedraw = true;
 				}
 			}
@@ -193,7 +193,7 @@ public class GLPuppet {
 			public void setSubtitle(String subtitle) {
 				synchronized (mainWindow) {
 					mainWindow.downloading = null;
-					mainWindow.subtitle = Translate.format(subtitle);
+					mainWindow.subtitle = Translate.get(subtitle).toString();
 					mainWindow.needsFullRedraw = true;
 				}
 			}
@@ -245,8 +245,8 @@ public class GLPuppet {
 				synchronized (mainWindow) {
 					mainWindow.offerChangeFlavorsName = name;
 					mainWindow.offerChangeFlavors = System.nanoTime();
-					setTitle(Translate.format("title.done"));
-					setSubtitle(Translate.format("subtitle.waiting_for_flavors"));
+					setTitle(Translate.get("title.done").toString());
+					setSubtitle(Translate.get("subtitle.waiting_for_flavors").toString());
 					setDone();
 				}
 			}

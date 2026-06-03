@@ -29,6 +29,7 @@ import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -83,6 +84,10 @@ public class Bootstrapper {
 		
 		public void forget() {
 			files = null;
+		}
+		
+		public Set<String> getFiles() {
+			return files.keySet();
 		}
 		
 		@Override

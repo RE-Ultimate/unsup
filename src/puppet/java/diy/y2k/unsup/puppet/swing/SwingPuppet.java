@@ -200,22 +200,47 @@ public class SwingPuppet {
 			@Override
 			public void setTitle(String str) {
 				invokeLater(() -> {
-					title.setText("<html><nobr>"+Translate.format(str)+"</nobr></html>");
+					title.setText("<html><nobr>"+Translate.get(str).toString()+"</nobr></html>");
 				});
 			}
 			
 			@Override
 			public void setSubtitle(String str) {
 				invokeLater(() -> {
-					subtitle.setText("<html><nobr>"+Translate.format(str)+"</nobr></html>");
+					subtitle.setText("<html><nobr>"+Translate.get(str).toString()+"</nobr></html>");
 				});
 			}
 			
 			@Override
 			public void setDownloading(String[] files) {
-				StringJoiner joiner = new StringJoiner(", ");
-				for (String s : files) joiner.add(s);
-				setSubtitle(Translate.format("subtitle.downloading", joiner));
+				setSubtitle(switch (files.length) {
+					case 0 -> Translate.get("subtitle.downloading_indeterminate").toString();
+					case 1 -> Translate.get("subtitle.downloading.1")
+						.with("filename_1", files[0])
+						.toString();
+					case 2 -> Translate.get("subtitle.downloading.2")
+						.with("filename_1", files[0])
+						.with("filename_2", files[1])
+						.toString();
+					case 3 -> Translate.get("subtitle.downloading.3")
+						.with("filename_1", files[0])
+						.with("filename_2", files[1])
+						.with("filename_3", files[2])
+						.toString();
+					case 4 -> Translate.get("subtitle.downloading.4")
+						.with("filename_1", files[0])
+						.with("filename_2", files[1])
+						.with("filename_3", files[2])
+						.with("filename_4", files[3])
+						.toString();
+					default -> Translate.get("subtitle.downloading.4.elided")
+						.with("filename_1", files[0])
+						.with("filename_2", files[1])
+						.with("filename_3", files[2])
+						.with("filename_4", files[3])
+						.with("elided_count", files.length-4)
+						.toString();
+				});
 			}
 
 			@Override
@@ -315,7 +340,7 @@ public class SwingPuppet {
 	}
 
 	private static void buildUi() {
-		frame = new JFrame(Translate.format("dialog.progress.title", Util.VERSION));
+		frame = new JFrame(Translate.get("dialog.progress.title").with("version", Util.VERSION).toString());
 		frame.setIconImages(logos);
 		frame.setLocationRelativeTo(null);
 		frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -327,9 +352,9 @@ public class SwingPuppet {
 			@Override
 			public void windowClosing(WindowEvent e) {
 				if (closeAlreadyAttempted) {
-					openMessageDialog(null, Translate.format("dialog.busy.title"),
-							"<html><center><b>"+Translate.format("dialog.busy")+"</b><br/>"+Translate.format("dialog.please_wait")+"</center></html>",
-							JOptionPane.WARNING_MESSAGE, Translate.format("option.ok"));
+					openMessageDialog(null, Translate.get("dialog.busy.title").toString(),
+							"<html><center><b>"+Translate.get("dialog.busy").toString()+"</b><br/>"+Translate.get("dialog.please_wait").toString()+"</center></html>",
+							JOptionPane.WARNING_MESSAGE, Translate.get("option.ok").toString());
 				} else {
 					closeAlreadyAttempted = true;
 					Puppet.reportCloseRequest();
@@ -349,7 +374,7 @@ public class SwingPuppet {
 		
 		Box inner = Box.createVerticalBox();
 		inner.setBorder(new EmptyBorder(8, 0, 0, 0));
-		title = new JLabel("<html>"+Translate.format("title.default")+"</html>");
+		title = new JLabel("<html>"+Translate.get("title.default").toString()+"</html>");
 		title.setForeground(getColor(ColorChoice.TITLE));
 		title.setFont(fontBold.deriveFont(24f));
 		title.setAlignmentX(0);
@@ -446,12 +471,15 @@ public class SwingPuppet {
 	}
 	
 	private static void openMessageDialog(String name, String title, String body, int messageType, String... options) {
-		String[] split = Translate.format(body).split("\n", 2);
+		String[] split = Translate.get(body).toString().split("\n", 2);
 		body = "<b>"+split[0]+"</b><br/>"+(split.length == 2 ? split[1].replace("\n", "<br/>") : "");
-		String[] formatted = Translate.format(options);
+		String[] formatted = new String[options.length];
+		for (int i = 0; i < options.length; i++) {
+			formatted[i] = Translate.get(options[i]).toString();
+		}
 		JOptionPane pane = new JOptionPane("<html><center>"+body+"</center></html>", messageType, JOptionPane.DEFAULT_OPTION, null, formatted);
 		configureOptionPane(pane);
-		JDialog dialog = pane.createDialog(frame != null && frame.isVisible() ? frame : null, Translate.format(title));
+		JDialog dialog = pane.createDialog(frame != null && frame.isVisible() ? frame : null, Translate.get(title).toString());
 		configureOptionDialog(pane, dialog);
 		dialog.setVisible(true);
 		if (name != null) {
@@ -478,16 +506,19 @@ public class SwingPuppet {
 	}
 
 	private static void openChoiceDialog(String name, String title, String body, String def, String... options) {
-		String[] split = Translate.format(body).split("\n", 2);
+		String[] split = Translate.get(body).toString().split("\n", 2);
 		body = "<b>"+split[0]+"</b><br/>"+(split.length == 2 ? split[1].replace("\n", "<br/>") : "");
-		JOptionPane pane = new JOptionPane("<html><center>"+Translate.format(body)+"</center></html>", JOptionPane.PLAIN_MESSAGE, JOptionPane.DEFAULT_OPTION, null,
-				new Object[]{Translate.format("option.ok")});
+		JOptionPane pane = new JOptionPane("<html><center>"+Translate.get(body).toString()+"</center></html>", JOptionPane.PLAIN_MESSAGE, JOptionPane.DEFAULT_OPTION, null,
+				new Object[]{Translate.get("option.ok").toString()});
 		pane.setWantsInput(true);
-		String[] formatted = Translate.format(options);
+		String[] formatted = new String[options.length];
+		for (int i = 0; i < options.length; i++) {
+			formatted[i] = Translate.get(options[i]).toString();
+		}
 		pane.setSelectionValues(formatted);
-		pane.setInitialSelectionValue(Translate.format(def));
+		pane.setInitialSelectionValue(Translate.get(def).toString());
 		configureOptionPane(pane);
-		JDialog dialog = pane.createDialog(frame != null && frame.isVisible() ? frame : null, Translate.format(title));
+		JDialog dialog = pane.createDialog(frame != null && frame.isVisible() ? frame : null, Translate.get(title).toString());
 		configureOptionDialog(pane, dialog);
 		dialog.setVisible(true);
 		if (name != null) {
@@ -509,14 +540,14 @@ public class SwingPuppet {
 	}
 	
 	private static void openFlavorDialog(String name, List<FlavorGroup> groups) {
-		JDialog dialog = new JDialog(frame != null && frame.isVisible() ? frame : null, Translate.format("dialog.flavors.title"));
+		JDialog dialog = new JDialog(frame != null && frame.isVisible() ? frame : null, Translate.get("dialog.flavors.title").toString());
 		dialog.setIconImages(logos);
 		dialog.setModal(true);
 		dialog.setBackground(getColor(ColorChoice.BACKGROUND));
 		dialog.setForeground(getColor(ColorChoice.DIALOG));
 		dialog.setLocationRelativeTo(frame);
 		String descPfx = "<style>body { font-family: \"Fira Sans\"; color: #"+Integer.toHexString(getColor(ColorChoice.DIALOG).getRGB()|0xFF000000).substring(2)+"; }</style>";
-		String noDesc = "<font size=\"4\" face=\"Fira Sans\" color=\"#"+Integer.toHexString(getColor(ColorChoice.SUBTITLE).getRGB()|0xFF000000).substring(2)+"\"><i>"+Translate.format("flavor.hover_notice")+"</i></font>";
+		String noDesc = "<font size=\"4\" face=\"Fira Sans\" color=\"#"+Integer.toHexString(getColor(ColorChoice.SUBTITLE).getRGB()|0xFF000000).substring(2)+"\"><i>"+Translate.get("flavor.hover_notice").toString()+"</i></font>";
 		JEditorPane desc = new JEditorPane("text/html", noDesc);
 		Set<String> results = new HashSet<>();
 		Set<String> descriptions = new HashSet<>();
@@ -792,7 +823,7 @@ public class SwingPuppet {
 		buttons.setAlignmentX(0);
 		buttons.setMaximumSize(new Dimension(32767, 48));
 		buttons.add(Box.createHorizontalGlue());
-		JButton done = new JButton(Translate.format("option.done"));
+		JButton done = new JButton(Translate.get("option.done").toString());
 		done.setBackground(getColor(ColorChoice.BUTTON));
 		done.setForeground(getColor(ColorChoice.BUTTONTEXT));
 		buttons.add(done);

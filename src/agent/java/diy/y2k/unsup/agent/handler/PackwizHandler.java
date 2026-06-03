@@ -143,7 +143,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 				} else {
 					Log.info("Update available - only components have changed");
 				}
-				String body = "dialog.update.named¤"+ ourVersion.name() +"¤"+ theirVersion.name();
+				String body = "dialog.update.named¤old_version="+ ourVersion.name() +"¤new_version="+ theirVersion.name();
 				if (ourVersion.name().equals(theirVersion.name())) {
 					body = "dialog.update.unnamed";
 				}

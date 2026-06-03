@@ -79,7 +79,7 @@ public record Config(
 		@NotNull ROMap<String, String> strings,
 		@NotNull Optional<String> modpackName, @NotNull Optional<String> brandingIcon,
 		@NotNull Geometry flavorDialogGeom, double flavorDialogBias,
-		@NotNull PuppetMode puppetMode, @NotNull String lang,
+		@NotNull PuppetMode puppetMode,
 		@Nullable ProxySelector proxySelector, @NotNull ROList<X509Certificate> additionalCaCerts,
 		@NotNull ROList<String> insecureHosts,
 		boolean usePlatformCaCerts, boolean useBuiltinCaCerts,
@@ -112,7 +112,6 @@ public record Config(
 			/*Geometry flavorDialogGeom*/new Geometry(600, 400),
 			/*double flavorDialogBias*/0.5,
 			/*PuppetMode puppetMode*/PuppetMode.AUTO,
-			/*String lang*/SysProps.LANGUAGE.orBias(),
 			/*ProxySelector proxySelector*/ProxySelector.getDefault(),
 			/*List<X509Certificate> additionalCaCerts*/ReadOnly.list(),
 			/*List<String> insecureHosts*/ReadOnly.list(),
@@ -122,7 +121,7 @@ public record Config(
 		);
 	}
 
-	public static Config parse(QDIni config, @Nullable String arg, String lang) {
+	public static Config parse(QDIni config, @Nullable String arg) {
 		// this is kind of a mess, but it's also very direct.
 		// could smother it in reflection to make it more "elegant" but who fucking cares man
 		// this whole codebase is kind of about stringing together a bunch of disparate nonsense
@@ -347,7 +346,7 @@ public record Config(
 				ReadOnly.copyOf(defaultFlavors), packSig, altPackSig,
 				mmcComponentMap.unmodifiable(), ReadOnly.copyOf(colorChoices),
 				ReadOnly.copyOf(strings), modpackName, brandingIcon,
-				flavorDialogGeom, flavorDialogBias, puppetMode, lang, proxySelector,
+				flavorDialogGeom, flavorDialogBias, puppetMode, proxySelector,
 				ReadOnly.copyOf(additionalCaCerts), ReadOnly.copyOf(insecureHosts),
 				usePlatformCaCerts, useBuiltinCaCerts, autofix);
 	}

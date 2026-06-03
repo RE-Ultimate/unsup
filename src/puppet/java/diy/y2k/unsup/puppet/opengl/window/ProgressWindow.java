@@ -34,7 +34,6 @@ import static org.lwjgl.sdl.SDLKeycode.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
 public class ProgressWindow extends Window {
@@ -47,7 +46,7 @@ public class ProgressWindow extends Window {
 	
 	public GLThrobber throbber = new GLThrobber();
 	
-	public String title = Translate.format("title.default");
+	public String title = Translate.get("title.default").toString();
 	public String subtitle = "";
 	public String[] downloading;
 	public float prog = 0.5f;
@@ -89,7 +88,7 @@ public class ProgressWindow extends Window {
 			Puppet.reportDone();
 		} else if (closeRequested) {
 			MessageDialogWindow diag = new MessageDialogWindow("puppet_busy_notice", "dialog.busy.title",
-					Translate.format("dialog.busy"), AlertMessageType.WARN, new String[] {"option.ok"}, "option.ok");
+					Translate.get("dialog.busy").toString(), AlertMessageType.WARN, new String[] {"option.ok"}, "option.ok");
 			double dpiScale;
 			synchronized (this) {
 				dpiScale = this.dpiScale;
@@ -159,21 +158,33 @@ public class ProgressWindow extends Window {
 					int elided = 0;
 					do {
 						if (downloadingTmp.isEmpty()) {
-							subtitle = Translate.format("subtitle.downloading_indeterminate");
+							if (elided > 0) {
+								subtitle = Translate.get("subtitle.downloading.0.elided")
+										.withCardinalPlural("elided_count", elided)
+										.toString();
+							} else {
+								subtitle = Translate.get("subtitle.downloading.0").toString();
+							}
 							break;
 						} else if (downloadingTmp.size() == 1 && elided == 0) {
-							subtitle = Translate.format("subtitle.downloading", downloadingTmp.get(0));
+							subtitle = Translate.get("subtitle.downloading.1").with("filename_1", downloadingTmp.get(0)).toString();
 							break;
 						} else {
-							StringJoiner sj = new StringJoiner(", ");
-							downloadingTmp.forEach(sj::add);
-							if (elided == 0) {
-								subtitle = Translate.format("subtitle.downloading", sj);
-							} else {
-								subtitle = Translate.format("subtitle.downloading.elided", sj, elided);
+							int elidedTmp = elided;
+							int sizeTmp = downloadingTmp.size();
+							if (sizeTmp > 4) {
+								elidedTmp += sizeTmp-4;
+								sizeTmp = 4;
 							}
+							var str = Translate.get("subtitle.downloading."+sizeTmp+(elidedTmp == 0 ? "" : ".elided"));
+							str.withCardinalPlural("elided_count", elidedTmp);
+							str.with("filename_1", downloadingTmp.get(0));
+							if (downloadingTmp.size() > 1) str.with("filename_2", downloadingTmp.get(1));
+							if (downloadingTmp.size() > 2) str.with("filename_3", downloadingTmp.get(2));
+							if (downloadingTmp.size() > 3) str.with("filename_4", downloadingTmp.get(3));
 							elided++;
 							downloadingTmp.remove(downloadingTmp.size()-1);
+							subtitle = str.toString();
 						}
 					} while (font.measureString(Face.REGULAR, 14, subtitle) > width-64);
 				}
@@ -196,7 +207,7 @@ public class ProgressWindow extends Window {
 			
 
 			
-			String text = Translate.format("option.change_flavors");
+			String text = Translate.get("option.change_flavors").toString();
 			float textW = font.measureString(Face.REGULAR, 12, text);
 			float btnW = textW+24;
 			float btnX = width-(btnW+8);

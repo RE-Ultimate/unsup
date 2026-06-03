@@ -60,6 +60,7 @@ import diy.y2k.unsup.puppet.opengl.GLPuppet;
 import diy.y2k.unsup.puppet.swing.SwingPuppet;
 import me.saharnooby.qoi.QOIDecoder;
 import me.saharnooby.qoi.QOIImage;
+import net.xyzsd.plurals.PluralRule;
 
 public class Puppet {
 
@@ -78,6 +79,9 @@ public class Puppet {
 	public static double flavorDialogBias = 0.4;
 	
 	public static volatile boolean exitOnDone = true;
+	
+	public static PluralRule ordinalRules = PluralRule.ROOT_ORDINAL;
+	public static PluralRule cardinalRules = PluralRule.ROOT_CARDINAL;
 	
 	public static void main(String[] args) {
 		Thread.currentThread().setName("Main");
@@ -180,8 +184,14 @@ public class Puppet {
 							continue;
 						}
 						case "string" -> {
-							String[] spl = arg.split(":", 2);
-							Translate.addTranslation(spl[0], spl[1]);
+							String[] spl = arg.split(":", 7);
+							var other = spl[6];
+							var zero = firstNonEmpty(spl[1], other);
+							var one = firstNonEmpty(spl[2], other);
+							var two = firstNonEmpty(spl[3], other);
+							var few = firstNonEmpty(spl[4], other);
+							var many = firstNonEmpty(spl[5], other);
+							Translate.addTranslation(spl[0], new PluralStrings(zero, one, two, few, many, other));
 							continue;
 						}
 						case "icon" -> {
@@ -303,7 +313,7 @@ public class Puppet {
 								if (messageTypeStr.startsWith("choice=")) {
 									String[] options = messageTypeStr.substring(7).split("\u001C");
 									for (int i = 0; i < options.length; i++) {
-										options[i] = Translate.format(options[i].replace('\u001B', ':'));
+										options[i] = Translate.get(options[i].replace('\u001B', ':')).toString();
 									}
 									r = () -> del.openChoiceDialog(name, title, body, options, optionTypeStr);
 								} else {
@@ -322,7 +332,7 @@ public class Puppet {
 										default ->
 											throw new IllegalArgumentException("Unknown option type "+optionTypeStr);
 									};
-									r = () -> del.openMessageDialog(name, title, body, messageType, options, Translate.format(def));
+									r = () -> del.openMessageDialog(name, title, body, messageType, options, Translate.get(def).toString());
 								}
 							}
 						}
@@ -335,13 +345,13 @@ public class Puppet {
 								var grp = FlavorGroup.builder()
 									.id(fields[0])
 									.name(fields[1])
-									.description(Translate.format(fields[2]))
+									.description(Translate.get(fields[2]).toString())
 									.choices(choices);
 								for (int i = 3; i < fields.length; i += 4) {
 									choices.add(FlavorChoice.builder()
 										.id(fields[i])
 										.name(fields[i+1])
-										.description(Translate.format(fields[i+2]))
+										.description(Translate.get(fields[i+2]).toString())
 										.def(Boolean.parseBoolean(fields[i+3]))
 										.build());
 								}
@@ -384,6 +394,10 @@ public class Puppet {
 		}, "Reader").start();
 		
 		startMainThreadRunner();
+	}
+
+	private static String firstNonEmpty(String a, String b) {
+		return a.isEmpty() ? b : a;
 	}
 
 	public static void startMainThreadRunner() {

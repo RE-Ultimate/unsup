@@ -31,11 +31,17 @@ public class Resources {
 	private static String path(String name) {
 		return "diy/y2k/unsup/"+name;
 	}
+	
+	private static String oldPath(String name) {
+		return "com/unascribed/sup/"+name;
+	}
 
 	public static @Nullable InputStream open(String name) {
 		var cl = Resources.class.getClassLoader();
 		assert cl != null;
-		return cl.getResourceAsStream(path(name));
+		var res = cl.getResourceAsStream(path(name));
+		if (res == null) res = cl.getResourceAsStream(oldPath(name));
+		return res;
 	}
 
 	public static @NotNull InputStream openNonnull(String name) throws FileNotFoundException {
@@ -47,7 +53,9 @@ public class Resources {
 	public static @Nullable URL get(String name) {
 		var cl = Resources.class.getClassLoader();
 		assert cl != null;
-		return cl.getResource(path(name));
+		var res = cl.getResource(path(name));
+		if (res == null) res = cl.getResource(oldPath(name));
+		return res;
 	}
 	
 }
