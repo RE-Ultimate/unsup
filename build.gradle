@@ -127,6 +127,7 @@ task computeFileDates {
 			include 'gradle/verification-metadata.xml'
 			
 			exclude 'src/agent/java/uk/co/lucasweb/**'
+			exclude 'buildSrc/src/main/java/diy/y2k/unsup/PlatDetect.java'
 			
 			includeEmptyDirs false
 			
@@ -134,15 +135,48 @@ task computeFileDates {
 				// due to Weblate squash commits addon, which i have since uninstalled
 				// this can get removed once all the translations get updated
 				'src/main/resources/diy/y2k/unsup/presets/lang/nb-NO.ini': ['Artemis'],
-				'src/main/resources/diy/y2k/unsup/presets/lang/ko.ini': ['Skye'],
 				'src/main/resources/diy/y2k/unsup/presets/lang/tok.ini': ['Jo Null'],
+			]
+			
+			def unrecognizedRenames = [
+				'src/agent/java/diy/y2k/unsup/agent/pieces/Murmur2CFHasher.java': [
+					'src/agent/java/com/unascribed/sup/agent/pieces/Murmur2CFMessageDigest.java'
+				]
 			]
 			
 			eachFile {
 				try {
-					def years = ['sh', '-c', "git log --grep '\\[no attribution\\]' --invert-grep --format=%cd --date=iso-strict --follow '${it.path}' |cut -d- -f1 |sort -nu"].execute().text.trim().split("\n").collect { Integer.parseInt(it) }
-					def authors = ['sh', '-c', "git log --grep '\\[no attribution\\]' --invert-grep --format=%aN --follow '${it.path}' |grep -v '^\$' |grep -v 'Sleeping Town Weblate' |sort -u"].execute().text.trim().split("\n").toList()
+					def paths = [it.path]
+					paths.addAll(unrecognizedRenames[it.path] ?: []);
+					def years = new TreeSet<>()
+					def authors = new HashSet<>()
+					paths.each { thisPath ->
+						years.addAll(['sh', '-c',
+							"git log -z --format='%cd %B' --date=iso-strict --follow -- '${thisPath}' \
+								|grep -zvF '[no attribution]' \
+								|cut -z -d- -f1 \
+								|sort -nuz \
+								|tr '\\0' '\\n'"
+							].execute().text.trim().split("\n").collect { line ->
+								try {
+									return Integer.parseInt(line)
+								} catch (e) {
+									println "${thisPath} has no commits that allow attribution!"
+									return 2026
+								}
+							})
+						authors.addAll(['sh', '-c',
+							"git log -z --format='%aN%x01%B' --follow -- '${thisPath}' \
+								|grep -zvF '[no attribution]' \
+								|cut -z -d \$'\\x01' -f 1 \
+								|grep -zv '^\$' \
+								|grep -zv 'Sleeping Town Weblate' \
+								|sort -zu |tr '\\0' '\\n'"
+							].execute().text.trim().split("\n").toList())
+					}
 					authors.addAll(uncreditedAuthors[it.path] ?: [])
+					authors = new ArrayList<>(authors)
+					authors.sort()
 					if (authors.remove('Una Kearney') | authors.remove('Una') | authors.remove('Kryn') | authors.remove('Kaile')) {
 						authors.add(0, 'Exa Skye')
 					}
