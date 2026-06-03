@@ -55,5 +55,6 @@
     "dialog.progress.title.branded": "{{.brand}} Updater (alimenté par unsup v{{.version}})",
     "dialog.busy.title": "unsup est occupé",
     "dialog.busy.title.branded": "{{.brand}} Updater est occupé",
-    "dialog.busy": "L'updater est occupé et ne peut pas se fermer maintenant.\nVeuillez attendre un moment."
+    "dialog.busy": "L'updater est occupé et ne peut pas se fermer maintenant.\nVeuillez attendre un moment.",
+    "subtitle.downloading.1": "Téléchargent {{.filename_1}}"
 }
