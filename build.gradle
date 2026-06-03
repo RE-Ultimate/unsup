@@ -58,7 +58,7 @@ ext {
 }
 
 base {
-	group = 'com.unascribed'
+	group = 'diy.y2k'
 	archivesName = 'unsup'
 	def verBase = '1.3'
 	if (project.hasProperty('unsup.release')) {
@@ -588,7 +588,7 @@ publishing {
 	}
 	publications {
 		maven(MavenPublication) {
-			groupId = 'com.unascribed'
+			groupId = 'diy.y2k'
 			artifactId = 'unsup'
 			version = project.version
 
