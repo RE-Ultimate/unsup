@@ -51,5 +51,26 @@
     "title.checking": "Controleren voor updates…",
     "subtitle.applying": "Verandering aan het doorvoeren. Forceer de bijwerker niet te sluiten.",
     "subtitle.verifying": "Consistentie aan het verifiëren",
-    "dialog.progress.title.branded": "{{.brand}} Bijwerker (draaiend op unsup v{{.version}})"
+    "dialog.progress.title.branded": "{{.brand}} Bijwerker (draaiend op unsup v{{.version}})",
+    "subtitle.downloading.2": "{{.filename_1}} en {{.filename_2}} aan het downloaden",
+    "subtitle.downloading.3": "{{.filename_1}}, {{.filename_2}}, en {{.filename_3}} aan het downloaden",
+    "subtitle.downloading.0": "Aan het downloaden…",
+    "subtitle.downloading.0.elided": {
+        "one": "{{.elided_count}} bestand aan het downloaden",
+        "other": "{{.elided_count}} bestanden aan het downloaden"
+    },
+    "subtitle.downloading.1": "{{.filename_1}} aan het downloaden",
+    "subtitle.downloading.4": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, en {{.filename_4}} aan het downloaden",
+    "subtitle.downloading.2.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}}, en {{.elided_count}} ander aan het downloaden",
+        "other": "{{.filename_1}}, {{.filename_2}}, en {{.elided_count}} andere aan het downloaden"
+    },
+    "subtitle.downloading.3.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, en {{.elided_count}} ander aan het downloaden",
+        "other": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} en {{.elided_count}} andere aan het downloaden"
+    },
+    "subtitle.downloading.1.elided": {
+        "one": "{{.filename_1}} en {{.elided_count}} ander aan het downloaden",
+        "other": "{{.filename_1}} en {{.elided_count}} andere aan het downloaden"
+    }
 }
