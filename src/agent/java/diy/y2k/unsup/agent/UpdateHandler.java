@@ -60,11 +60,11 @@ import diy.y2k.unsup.agent.handler.AbstractFormatHandler.CheckResult;
 import diy.y2k.unsup.agent.handler.AbstractFormatHandler.FilePlan;
 import diy.y2k.unsup.agent.handler.AbstractFormatHandler.FileState;
 import diy.y2k.unsup.agent.handler.AbstractFormatHandler.UpdatePlan;
+import diy.y2k.unsup.agent.http.HTTP;
+import diy.y2k.unsup.agent.http.HTTP.DownloadedFile;
+import diy.y2k.unsup.agent.http.HTTP.Retry;
 import diy.y2k.unsup.agent.util.CorruptionHelper;
-import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.agent.util.CorruptionHelper.CorruptionType;
-import diy.y2k.unsup.agent.util.RequestHelper.DownloadedFile;
-import diy.y2k.unsup.agent.util.RequestHelper.Retry;
 import diy.y2k.unsup.data.AlertMessageType;
 import diy.y2k.unsup.data.ConflictType;
 import diy.y2k.unsup.data.SourceFormat;
@@ -198,17 +198,17 @@ public class UpdateHandler {
 				boolean normalConflict = false;
 				long size = dest.length();
 				if (from.hash() == null) {
-					if (to.func() != null && to.sizeMatches(size) && to.hashMatches(RequestHelper.hash(to.func(), dest))) {
+					if (to.func() != null && to.sizeMatches(size) && to.hashMatches(HTTP.hash(to.func(), dest))) {
 						Log.info(path+" was created in this update and locally, but the local version matches the update. Skipping");
 						f.skip = true;
 						continue;
 					}
 					conflictType = ConflictType.LOCAL_AND_REMOTE_CREATED;
 				} else if (from.sizeMatches(size)) {
-					String hash = RequestHelper.hash(from.func(), dest);
+					String hash = HTTP.hash(from.func(), dest);
 					if (from.hashMatches(hash)) {
 						Log.debug(path+" matches the expected from hash");
-					} else if (to.sizeMatches(size) && to.hashMatches(from.func() == to.func() ? hash : RequestHelper.hash(to.func(), dest))) {
+					} else if (to.sizeMatches(size) && to.hashMatches(from.func() == to.func() ? hash : HTTP.hash(to.func(), dest))) {
 						Log.info(path+" matches the expected to hash, so has already been updated locally. Skipping");
 						f.skip = true;
 						continue;
@@ -216,7 +216,7 @@ public class UpdateHandler {
 						Log.info("CONFLICT: "+path+" doesn't match the expected from hash ("+hash+" != "+ from.hash() +")");
 						normalConflict = true;
 					}
-				} else if (to.sizeMatches(size) && to.hashMatches(RequestHelper.hash(to.func(), dest))) {
+				} else if (to.sizeMatches(size) && to.hashMatches(HTTP.hash(to.func(), dest))) {
 					Log.info(path+" matches the expected to hash, so has already been updated locally. Skipping");
 					f.skip = true;
 					continue;
@@ -325,7 +325,7 @@ public class UpdateHandler {
 				}
 				try {
 					if (f.primerUrl != null) {
-						try (InputStream in = RequestHelper.get(f.primerUrl, f.hostile).stream()) {
+						try (InputStream in = HTTP.get(f.primerUrl, f.hostile).stream()) {
 							byte[] buf = new byte[8192];
 							while (true) {
 								if (in.read(buf) == -1) break;
@@ -466,8 +466,8 @@ public class UpdateHandler {
 
 	static DownloadedFile downloadAndCheckHash(File tmp, AtomicIntegerArray progresses, int progressIdx,
 			Runnable updateProgress, String path, FilePlan f, URI url, FileState to) throws IOException {
-		return RequestHelper.withRetries(3, () -> {
-			DownloadedFile df = RequestHelper.downloadToFile(url, tmp, to.size(),
+		return HTTP.withRetries(3, () -> {
+			DownloadedFile df = HTTP.downloadToFile(url, tmp, to.size(),
 					(state, amt, size) -> {
 						switch (state) {
 							case DOWNLOADING -> {

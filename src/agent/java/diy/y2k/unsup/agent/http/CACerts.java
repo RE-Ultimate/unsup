@@ -17,7 +17,7 @@
  * License along with unsup; if not, see <https://www.gnu.org/licenses/>.
  */
 
-package diy.y2k.unsup.agent;
+package diy.y2k.unsup.agent.http;
 
 import java.io.IOException;
 import java.security.cert.CertificateException;
@@ -31,6 +31,7 @@ import java.util.zip.ZipInputStream;
 
 import org.brotli.dec.BrotliInputStream;
 
+import diy.y2k.unsup.agent.Log;
 import diy.y2k.unsup.util.Resources;
 
 class CACerts {

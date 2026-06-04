@@ -31,7 +31,7 @@ public abstract class AbstractStaticHeaderAuthorizer implements Authorizer {
 	}
 	
 	@Override
-	public void authorize(HttpRequest orig, HttpRequest.Builder req) {
+	public void authorize(HttpRequest.Builder req) {
 		req.header(key, value);
 	}
 	

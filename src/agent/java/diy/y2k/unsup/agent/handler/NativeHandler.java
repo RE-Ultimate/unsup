@@ -39,7 +39,7 @@ import diy.y2k.unsup.agent.PuppetHandler;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOption;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOptionType;
 import diy.y2k.unsup.agent.data.HashFunction;
-import diy.y2k.unsup.agent.util.RequestHelper;
+import diy.y2k.unsup.agent.http.HTTP;
 import diy.y2k.unsup.bootstrap.Util;
 import diy.y2k.unsup.data.AlertMessageType;
 import diy.y2k.unsup.data.FlavorChoice;
@@ -63,7 +63,7 @@ public class NativeHandler extends AbstractFormatHandler {
 	@Override
 	public CheckResult check() throws IOException, JsonParserException, URISyntaxException {
 		Log.info("Loading unsup-format manifest from "+src);
-		JsonObject manifest = RequestHelper.loadJson(src, 1*M, src.resolve("manifest.sig"));
+		JsonObject manifest = HTTP.loadJson(src, 1*M, src.resolve("manifest.sig"));
 		checkManifestFlavor(manifest, "root", it -> it == 1);
 		Version ourVersion = Version.fromJson(baseState.getObject("current_version"));
 		if (!manifest.containsKey("versions")) throw new IOException("Manifest is missing versions field");
@@ -180,7 +180,7 @@ public class NativeHandler extends AbstractFormatHandler {
 			Log.info("Update available! We have nothing, they have "+theirVersion);
 			JsonObject bootstrap = null;
 			try {
-				bootstrap = RequestHelper.loadJson(src.resolve("bootstrap.json"), 16*M, src.resolve("bootstrap.sig"));
+				bootstrap = HTTP.loadJson(src.resolve("bootstrap.json"), 16*M, src.resolve("bootstrap.sig"));
 			} catch (FileNotFoundException e) {
 				Log.info("Bootstrap manifest missing, will have to retrieve and collapse every update");
 			}
@@ -204,7 +204,7 @@ public class NativeHandler extends AbstractFormatHandler {
 					long size = file.getLong("size", -1);
 					if (size < 0) throw new IOException(path+" in files array has invalid or missing size");
 					if (size == 0 && !hash.equals(func.emptyHash())) throw new IOException(path+" in files array is empty file, but hash isn't the empty hash ("+hash+" != "+func.emptyHash()+")");
-					String urlStr = RequestHelper.checkSchemeMismatch(src, file.getString("url"));
+					String urlStr = HTTP.checkSchemeMismatch(src, file.getString("url"));
 					JsonArray envs = file.getArray("envs");
 					if (Agent.config().useEnvs() && !Iterables.contains(envs, Agent.config().detectedEnv())) {
 						Log.info("Skipping "+path+" as it's not eligible for env "+Agent.config().detectedEnv());
@@ -263,7 +263,7 @@ public class NativeHandler extends AbstractFormatHandler {
 			int updates = theirVersion.code() - ourVersion.code();
 			for (int i = 0; i < updates; i++) {
 				int code = ourVersion.code() +(i+1);
-				JsonObject ver = RequestHelper.loadJson(src.resolve(Util.uriOfPath("versions/"+code+".json")), 4*M,
+				JsonObject ver = HTTP.loadJson(src.resolve(Util.uriOfPath("versions/"+code+".json")), 4*M,
 						src.resolve(Util.uriOfPath("versions/"+code+".sig")));
 				checkManifestFlavor(ver, "update", it -> it == 1);
 				HashFunction func = HashFunction.byName(ver.getString("hash_function", DEFAULT_HASH_FUNCTION));
@@ -285,7 +285,7 @@ public class NativeHandler extends AbstractFormatHandler {
 						Log.warn(path+" in changes array has same from and to hash/size? Ignoring");
 						continue;
 					}
-					String urlStr = RequestHelper.checkSchemeMismatch(src, file.getString("url"));
+					String urlStr = HTTP.checkSchemeMismatch(src, file.getString("url"));
 					JsonArray envs = file.getArray("envs");
 					if (Agent.config().useEnvs() && !Iterables.contains(envs, Agent.config().detectedEnv())) {
 						Log.info("Skipping "+path+" as it's not eligible for env "+Agent.config().detectedEnv());

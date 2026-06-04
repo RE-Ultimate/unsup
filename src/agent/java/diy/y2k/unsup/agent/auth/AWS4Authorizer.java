@@ -45,14 +45,15 @@ public class AWS4Authorizer implements Authorizer {
 	}
 	
 	@Override
-	public void authorize(HttpRequest orig, HttpRequest.Builder req) {
+	public void authorize(HttpRequest.Builder req) {
+		var bld = req.build();
 		var d = DATE.get().format(new Date());
 		req.header("Authorization", Signer.builder()
 				.awsCredentials(new AwsCredentials(accessId, accessKey))
 				.region(region)
-				.header("host", orig.uri().getHost())
+				.header("host", bld.uri().getHost())
 				.header("x-amz-date", d)
-				.build(orig, "s3", HashFunction.SHA2_256.emptyHash())
+				.build(bld, "s3", HashFunction.SHA2_256.emptyHash())
 				.getSignature());
 		req.header("x-amz-date", d);
 	}

@@ -17,7 +17,7 @@
  * License along with unsup; if not, see <https://www.gnu.org/licenses/>.
  */
 
-package diy.y2k.unsup.agent.util;
+package diy.y2k.unsup.agent.http;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,26 +35,49 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.ConnectException;
+import java.net.CookieManager;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.PKIXCertPathChecker;
+import java.security.cert.TrustAnchor;
+import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.InflaterInputStream;
 
+import javax.net.ssl.CertPathTrustManagerParameters;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import org.brotli.dec.BrotliInputStream;
 
@@ -66,22 +89,29 @@ import com.moandjiezana.toml.Toml;
 
 import diy.y2k.stator.io.NullOutputStream;
 import diy.y2k.stator.io.Slice;
+import diy.y2k.stator.io.hash.StandardHashers;
 import diy.y2k.unsup.agent.Agent;
+import diy.y2k.unsup.agent.ExitCode;
 import diy.y2k.unsup.agent.Log;
+import diy.y2k.unsup.agent.auth.Authorizer.AuthorizerSpec;
 import diy.y2k.unsup.agent.data.HashFunction;
 import diy.y2k.unsup.agent.signing.SigProvider;
+import diy.y2k.unsup.agent.util.CorruptionHelper;
 import diy.y2k.unsup.agent.util.CorruptionHelper.CorruptionType;
 import diy.y2k.unsup.ann.NotNull;
 import diy.y2k.unsup.ann.Nullable;
 import diy.y2k.unsup.bootstrap.Util;
 import diy.y2k.unsup.data.SysProps;
 import diy.y2k.unsup.util.Bases;
+import diy.y2k.unsup.util.Multimap;
 import diy.y2k.unsup.util.SuppressFBWarnings;
+import javahttpclient.HttpClient;
 import javahttpclient.HttpRequest;
 import javahttpclient.HttpResponse;
+import javahttpclient.HttpClient.Redirect;
 import javahttpclient.HttpResponse.BodyHandlers;
 
-public class RequestHelper {
+public class HTTP {
 	
 	public static final int K = 1024;
 	public static final int M = K*1024;
@@ -89,6 +119,129 @@ public class RequestHelper {
 	public static volatile boolean TENACIOUS_MODE = false;
 	
 	public static final long ONE_SECOND_IN_NANOS = TimeUnit.SECONDS.toNanos(1);
+	
+	private static HttpClient client;
+	private static final List<AuthorizerSpec> authorizers = new ArrayList<>();
+	
+	@Desugar
+	private record CertDef(String source, X509Certificate cert) {}
+	
+	public static void setup(Optional<AuthorizerSpec> additionalAuthorizer) throws AssertionError {
+		Set<String> insecureHosts = new HashSet<>();
+		List<CertDef> certDefs = new ArrayList<>();
+		if (Agent.config().usePlatformCaCerts()) {
+			try {
+				var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+				tmf.init((KeyStore)null);
+				var x509 = findX509(tmf);
+				for (var cert : x509.getAcceptedIssuers()) {
+					certDefs.add(new CertDef("platform", cert));
+				}
+			} catch (Throwable t) {
+				Log.error("Can't add platform CA certificates due to an unexpected exception", t);
+			}
+		} else {
+			Log.debug("Skipping addition of platform-provided CA certificates");
+		}
+		if (Agent.config().useBuiltinCaCerts()) {
+			for (var cert : CACerts.certs) {
+				certDefs.add(new CertDef("built-in", cert));
+			}
+		} else {
+			Log.debug("Skipping addition of built-in CA certificates");
+		}
+		for (var cert : Agent.config().additionalCaCerts()) {
+			certDefs.add(new CertDef("config", cert));
+		}
+		for (String host : Agent.config().insecureHosts()) {
+			Log.debug("Adding insecure host "+host);
+			insecureHosts.add(host);
+		}
+		if (certDefs.isEmpty()) {
+			// the first connection attempt will crash with "the trustAnchors parameter must be non-empty" in this state
+			Log.error("Config error: No CA certificates were added! Exiting.");
+			throw ExitCode.CONFIG_ERROR.exit();
+		} else {
+			Multimap<Slice, CertDef> defsByEncoded = new Multimap<>();
+			for (var def : certDefs) {
+				byte[] encoded;
+				try {
+					encoded = def.cert.getEncoded();
+				} catch (CertificateEncodingException e) {
+					throw new AssertionError(e);
+				}
+				defsByEncoded.put(new Slice(encoded), def);
+			}
+			Set<String> locations = new LinkedHashSet<>();
+			for (var en : defsByEncoded.mapEntries()) {
+				var def = en.getValue().get(0);
+				for (var specificDef : en.getValue()) {
+					locations.add(specificDef.source);
+				}
+				String fp = StandardHashers.sha2_256().hash(en.getKey().toByteArray()).toHex()
+								.replaceAll("..(?!$)", "$0:");
+				var sj = new StringJoiner(", ");
+				for (var loc : locations) {
+					sj.add(loc);
+				}
+				Log.debug("Adding CA cert "+def.cert.getSubjectX500Principal().getName()+" (defined by "+sj+" - SHA256 fingerprint: "+fp+")");
+				locations.clear();
+			}
+		}
+		authorizers.clear();
+		additionalAuthorizer.ifPresent(authorizers::add);
+		authorizers.addAll(Agent.config().authorizers());
+		try {
+			var ctx = SSLContext.getInstance("TLS");
+			
+			var ourTm = TrustManagerFactory.getInstance("PKIX");
+			var pkixParams = new PKIXBuilderParameters(certDefs.stream()
+					.map(cert -> new TrustAnchor(cert.cert, null))
+					.collect(Collectors.toSet()), null);
+			pkixParams.addCertPathChecker((PKIXCertPathChecker)CertPathValidator.getInstance("PKIX").getRevocationChecker());
+			var trustpath = new CertPathTrustManagerParameters(pkixParams);
+			ourTm.init(trustpath);
+			var trustManager = findX509(ourTm);
+			
+			SecureRandom sr;
+			try {
+				sr = SecureRandom.getInstance("NativePRNGNonBlocking");
+			} catch (NoSuchAlgorithmException e) {
+				sr = new SecureRandom();
+			}
+			ctx.init(null, new TrustManager[] { trustManager }, sr);
+			client = HttpClient.newBuilder()
+				.followRedirects(Redirect.NORMAL)
+				.connectTimeout(Duration.ofSeconds(30))
+				.cookieHandler(new CookieManager(null, null))
+				.proxy(Agent.config().proxySelector())
+				.sslContext(ctx)
+				.build();
+		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | KeyManagementException e) {
+			throw new AssertionError(e);
+		}
+	}
+	
+	public static void destroy(boolean wait) {
+		if (client != null) {
+			client.shutdown();
+			if (wait) {
+				try {
+					client.awaitTermination(Duration.ofMillis(500));
+				} catch (InterruptedException e) {}
+			}
+			client = null;
+		}
+	}
+
+	private static X509TrustManager findX509(TrustManagerFactory tmf) {
+		for (var mgr : tmf.getTrustManagers()) {
+			if (mgr instanceof X509TrustManager xtm) {
+				return xtm;
+			}
+		}
+		throw new AssertionError("No X509TrustManager");
+	}
 	
 	public static String checkSchemeMismatch(URI src, String url) throws URISyntaxException {
 		if (url == null) return null;
@@ -160,7 +313,7 @@ public class RequestHelper {
 		return withRetries(10, () -> {
 			try {
 				InputStream conn = get(url, false, 0, sendLimitToServer ? sizeLimit-1 : 0).stream();
-				var resp = RequestHelper.collectLimited(conn, sizeLimit);
+				var resp = HTTP.collectLimited(conn, sizeLimit);
 				if (resp.isPresent()) return resp.get();
 				throw new IOException("Received more than "+sizeLimit+" bytes from server");
 			} catch (SocketTimeoutException e) {
@@ -254,7 +407,7 @@ public class RequestHelper {
 			}
 		}
 		final boolean fhostile = hostile;
-		return RequestHelper.withRetries(10, () -> {
+		return HTTP.withRetries(10, () -> {
 			try {
 				HttpRequest.Builder reqbldr = HttpRequest.newBuilder(url)
 						.header("User-Agent",
@@ -283,7 +436,12 @@ public class RequestHelper {
 				} else {
 					reqbldr.header("Accept-Encoding", "gzip, deflate, br");
 				}
-				HttpResponse<InputStream> res = Agent.http().send(reqbldr.build(), BodyHandlers.ofInputStream());
+				for (var en : authorizers) {
+					if (url.toString().startsWith(en.urlPrefix())) {
+						en.auth().authorize(reqbldr);
+					}
+				}
+				HttpResponse<InputStream> res = client.send(reqbldr.build(), BodyHandlers.ofInputStream());
 				if (res.statusCode() != (startAt == 0 && endAt == 0 ? 200 : 206)) {
 					if (res.statusCode() == 429) {
 						int delay = 0;
@@ -308,7 +466,7 @@ public class RequestHelper {
 							.definedDelay(delay);
 					}
 					if (res.statusCode() == 404 || res.statusCode() == 410) throw new FileNotFoundException(url.toString());
-					String s = RequestHelper.collectLimited(decompress(res), 512)
+					String s = HTTP.collectLimited(decompress(res), 512)
 							.map(b -> new String(b, StandardCharsets.UTF_8))
 							.orElse("(response too long)");
 					if (res.statusCode()/100 == 500) {

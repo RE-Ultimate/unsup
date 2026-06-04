@@ -24,42 +24,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.CookieManager;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.CertPathValidator;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.PKIXBuilderParameters;
-import java.security.cert.PKIXCertPathChecker;
-import java.security.cert.TrustAnchor;
-import java.security.cert.X509Certificate;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import javax.net.ssl.CertPathTrustManagerParameters;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-
-import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParser;
 import com.grack.nanojson.JsonWriter;
@@ -67,26 +41,21 @@ import com.unascribed.sup.Unsup;
 
 import diy.y2k.stator.Stopwatch;
 import diy.y2k.stator.function.ExceptableRunnable;
-import diy.y2k.stator.io.Slice;
-import diy.y2k.stator.io.hash.StandardHashers;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOption;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOptionType;
 import diy.y2k.unsup.agent.auth.Authorizer;
 import diy.y2k.unsup.agent.auth.Authorizer.AuthorizerSpec;
+import diy.y2k.unsup.agent.http.HTTP;
 import diy.y2k.unsup.agent.pieces.QDIni;
 import diy.y2k.unsup.agent.pieces.QDIni.QDIniException;
 import diy.y2k.unsup.agent.signing.SigProvider;
-import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.ann.NotNull;
 import diy.y2k.unsup.bootstrap.Bootstrapper;
 import diy.y2k.unsup.bootstrap.Util;
 import diy.y2k.unsup.data.AlertMessageType;
 import diy.y2k.unsup.data.SysPropDefs;
 import diy.y2k.unsup.data.SysProps;
-import diy.y2k.unsup.util.Multimap;
 import diy.y2k.unsup.util.Resources;
-import javahttpclient.HttpClient;
-import javahttpclient.HttpClient.Redirect;
 
 public class Agent {
 
@@ -114,8 +83,6 @@ public class Agent {
 	
 	/** this mutex must be held while doing sensitive operations that shouldn't be interrupted */
 	static final Object dangerMutex = new Object();
-	
-	private static HttpClient http;
 
 	public static void main(String[] args) {
 		standalone = true;
@@ -148,7 +115,7 @@ public class Agent {
 					}
 				})) {
 					Log.info("Reinitializing with newly updated config");
-					destroyHttp(false);
+					HTTP.destroy(false);
 					if (!preinit(arg)) return;
 				} else {
 					Log.info("No config update. Proceeding as normal.");
@@ -185,7 +152,7 @@ public class Agent {
 			
 			// now that we're done with operations we prefer to quickly fail, turn on retries
 			// for DNS resolution and connection failures
-			RequestHelper.TENACIOUS_MODE = true;
+			HTTP.TENACIOUS_MODE = true;
 			
 			UpdateHandler.checkForUpdate(state, config().format(), config().source(),
 					!config().behavior().promptUpdates(),
@@ -250,7 +217,7 @@ public class Agent {
 		}
 		config = Config.parse(ini, arg);
 		
-		setupHttp(Optional.empty());
+		HTTP.setup(Optional.empty());
 		
 		stateFile = new File(".unsup-state.json");
 		if (stateFile.exists()) {
@@ -320,14 +287,14 @@ public class Agent {
 				} else {
 					auth = Optional.empty();
 				}
-				setupHttp(auth);
+				HTTP.setup(auth);
 				int M = 1024*1024;
 				try {
-					var data = RequestHelper.loadAndVerify(uri, 16*M,
+					var data = HTTP.loadAndVerify(uri, 16*M,
 							new URI(SysProps.BOOTSTRAP_URL.get()+".sig"), key.orElse(null));
 					Files.write(configFile.toPath(), data);
 					Log.info("Successfully downloaded bootstrap config");
-					destroyHttp(false);
+					HTTP.destroy(false);
 					return loadConfig();
 				} catch (Exception e) {
 					Log.error("Bootstrap error: Download failed! Exiting.", e);
@@ -354,129 +321,6 @@ public class Agent {
 				Log.error("Config file error: "+req+" is required, but was not defined! Exiting.");
 				throw ExitCode.CONFIG_ERROR.exit();
 			}
-		}
-	}
-
-	@Desugar
-	private record CertDef(String source, X509Certificate cert) {}
-	
-	private static void setupHttp(Optional<AuthorizerSpec> additionalAuthorizer) throws AssertionError {
-		Set<String> insecureHosts = new HashSet<>();
-		List<CertDef> certDefs = new ArrayList<>();
-		if (config().usePlatformCaCerts()) {
-			try {
-				var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-				tmf.init((KeyStore)null);
-				var x509 = findX509(tmf);
-				for (var cert : x509.getAcceptedIssuers()) {
-					certDefs.add(new CertDef("platform", cert));
-				}
-			} catch (Throwable t) {
-				Log.error("Can't add platform CA certificates due to an unexpected exception", t);
-			}
-		} else {
-			Log.debug("Skipping addition of platform-provided CA certificates");
-		}
-		if (config().useBuiltinCaCerts()) {
-			for (var cert : CACerts.certs) {
-				certDefs.add(new CertDef("built-in", cert));
-			}
-		} else {
-			Log.debug("Skipping addition of built-in CA certificates");
-		}
-		for (var cert : config().additionalCaCerts()) {
-			certDefs.add(new CertDef("config", cert));
-		}
-		for (String host : config().insecureHosts()) {
-			Log.debug("Adding insecure host "+host);
-			insecureHosts.add(host);
-		}
-		if (certDefs.isEmpty()) {
-			// the first connection attempt will crash with "the trustAnchors parameter must be non-empty" in this state
-			Log.error("Config error: No CA certificates were added! Exiting.");
-			throw ExitCode.CONFIG_ERROR.exit();
-		} else {
-			Multimap<Slice, CertDef> defsByEncoded = new Multimap<>();
-			for (var def : certDefs) {
-				byte[] encoded;
-				try {
-					encoded = def.cert.getEncoded();
-				} catch (CertificateEncodingException e) {
-					throw new AssertionError(e);
-				}
-				defsByEncoded.put(new Slice(encoded), def);
-			}
-			Set<String> locations = new LinkedHashSet<>();
-			for (var en : defsByEncoded.mapEntries()) {
-				var def = en.getValue().get(0);
-				for (var specificDef : en.getValue()) {
-					locations.add(specificDef.source);
-				}
-				String fp = StandardHashers.sha2_256().hash(en.getKey().toByteArray()).toHex()
-								.replaceAll("..(?!$)", "$0:");
-				var sj = new StringJoiner(", ");
-				for (var loc : locations) {
-					sj.add(loc);
-				}
-				Log.debug("Adding CA cert "+def.cert.getSubjectX500Principal().getName()+" (defined by "+sj+" - SHA256 fingerprint: "+fp+")");
-				locations.clear();
-			}
-		}
-		var authorizers = new ArrayList<AuthorizerSpec>();
-		if (additionalAuthorizer.isPresent()) {
-			authorizers.add(additionalAuthorizer.get());
-		}
-		authorizers.addAll(config().authorizers());
-		
-		try {
-			var ctx = SSLContext.getInstance("TLS");
-			
-			var ourTm = TrustManagerFactory.getInstance("PKIX");
-			var pkixParams = new PKIXBuilderParameters(certDefs.stream()
-					.map(cert -> new TrustAnchor(cert.cert, null))
-					.collect(Collectors.toSet()), null);
-			pkixParams.addCertPathChecker((PKIXCertPathChecker)CertPathValidator.getInstance("PKIX").getRevocationChecker());
-			var trustpath = new CertPathTrustManagerParameters(pkixParams);
-			ourTm.init(trustpath);
-			var trustManager = findX509(ourTm);
-			
-			SecureRandom sr;
-			try {
-				sr = SecureRandom.getInstance("NativePRNGNonBlocking");
-			} catch (NoSuchAlgorithmException e) {
-				sr = new SecureRandom();
-			}
-			ctx.init(null, new TrustManager[] { trustManager }, sr);
-			http = HttpClient.newBuilder()
-				.followRedirects(Redirect.NORMAL)
-				.connectTimeout(Duration.ofSeconds(30))
-				.cookieHandler(new CookieManager(null, null))
-				.proxy(config().proxySelector())
-				.sslContext(ctx)
-				.build();
-		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | KeyManagementException e) {
-			throw new AssertionError(e);
-		}
-	}
-
-	private static X509TrustManager findX509(TrustManagerFactory tmf) {
-		for (var mgr : tmf.getTrustManagers()) {
-			if (mgr instanceof X509TrustManager xtm) {
-				return xtm;
-			}
-		}
-		throw new AssertionError("No X509TrustManager");
-	}
-	
-	private static void destroyHttp(boolean wait) {
-		if (http != null) {
-			http.shutdown();
-			if (wait) {
-				try {
-					http.awaitTermination(Duration.ofMillis(500));
-				} catch (InterruptedException e) {}
-			}
-			http = null;
 		}
 	}
 	
@@ -507,7 +351,7 @@ public class Agent {
 				er.run();
 			} catch (Throwable t) {}
 		}
-		destroyHttp(true);
+		HTTP.destroy(true);
 		if (Bootstrapper.universe != null) Bootstrapper.universe.forget();
 		cleanup = null;
 	}
@@ -551,10 +395,6 @@ public class Agent {
 
 	public static @NotNull Config config() {
 		return config;
-	}
-
-	public static HttpClient http() {
-		return http;
 	}
 
 }

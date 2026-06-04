@@ -64,9 +64,9 @@ import diy.y2k.stator.concurrent.Latch;
 import diy.y2k.unsup.PlatDetect;
 import diy.y2k.unsup.PlatDetect.ArchType;
 import diy.y2k.unsup.PlatDetect.OSType;
+import diy.y2k.unsup.agent.http.HTTP;
 import diy.y2k.unsup.agent.pieces.pseudolocale.AccentedEnglish;
 import diy.y2k.unsup.agent.pieces.pseudolocale.PigLatin;
-import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.bootstrap.Bootstrapper;
 import diy.y2k.unsup.bootstrap.Util;
 import diy.y2k.unsup.data.AlertMessageType;
@@ -480,7 +480,7 @@ public class PuppetHandler {
 			URI dl = URI.create(dlBase+".jar.br");
 			URI sig = URI.create(dlBase+".sig");
 			Files.createDirectories(cacheDir.toPath());
-			byte[] data = RequestHelper.loadAndVerify(dl, 64*M, sig, Agent.unsupSig);
+			byte[] data = HTTP.loadAndVerify(dl, 64*M, sig, Agent.unsupSig);
 			try (FileOutputStream fos = new FileOutputStream(cacheFileTmp);
 					InputStream is = new BrotliInputStream(new ByteArrayInputStream(data))) {
 				Util.copy(is, fos);

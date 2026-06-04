@@ -27,7 +27,7 @@ import javahttpclient.HttpRequest;
 
 public interface Authorizer {
 
-	void authorize(HttpRequest orig, HttpRequest.Builder req);
+	void authorize(HttpRequest.Builder req);
 
 	static Optional<Authorizer> parse(String v) {
 		String[] vspl = v.split(" ", 2);

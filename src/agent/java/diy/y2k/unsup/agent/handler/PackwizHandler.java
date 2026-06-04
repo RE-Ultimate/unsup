@@ -59,8 +59,8 @@ import diy.y2k.unsup.agent.PuppetHandler;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOption;
 import diy.y2k.unsup.agent.PuppetHandler.AlertOptionType;
 import diy.y2k.unsup.agent.data.HashFunction;
+import diy.y2k.unsup.agent.http.HTTP;
 import diy.y2k.unsup.agent.pieces.Murmur2CFHasher;
-import diy.y2k.unsup.agent.util.RequestHelper;
 import diy.y2k.unsup.ann.NotNull;
 import diy.y2k.unsup.ann.Nullable;
 import diy.y2k.unsup.bootstrap.Util;
@@ -84,7 +84,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 		var delete = new File[1];
 		try {
 			var ourVersion = Version.fromJson(baseState.getObject("current_version"));
-			Toml pack = RequestHelper.loadToml(src, 4*K, src.resolve("unsup.sig"));
+			Toml pack = HTTP.loadToml(src, 4*K, src.resolve("unsup.sig"));
 			var fmt = pack.getString("pack-format");
 			if (fmt == null)
 				throw new IOException("pack-format key not found. Are you sure this is a pack.toml?");
@@ -163,7 +163,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 				pwstate.put("lastIndexHash", indexDoublet);
 				PuppetHandler.updateTitle(bootstrapping ? "title.bootstrapping" : "title.updating", false);
 				PuppetHandler.updateSubtitle("subtitle.calculating");
-				Toml index = RequestHelper.loadToml(src.resolve(Util.uriOfPath(indexMeta.getString("file"))), 8*M,
+				Toml index = HTTP.loadToml(src.resolve(Util.uriOfPath(indexMeta.getString("file"))), 8*M,
 						indexFunc, indexMeta.getString("hash"));
 				Toml unsup = null;
 				List<FlavorGroup> unpickedGroups = new ArrayList<>();
@@ -201,7 +201,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 				if (ourFlavors == null) ourFlavors = new JsonArray();
 				if (pack.containsTable("versions") && pack.getTable("versions").containsPrimitive("unsup")) {
 					try {
-						unsup = RequestHelper.loadToml(src.resolve("unsup.toml"), 64*K, null);
+						unsup = HTTP.loadToml(src.resolve("unsup.toml"), 64*K, null);
 					} catch (FileNotFoundException e) {
 						Log.debug("unsup is in the versions table, but there's no unsup.toml");
 					}
@@ -278,7 +278,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 						if (unsup.getBoolean("features.metafiles_zip", false)) {
 							File tmp = new File(".unsup-tmp");
 							File outf = new File(tmp, "unsup-metafiles.zip");
-							try (var in = new BrotliInputStream(RequestHelper.get(src.resolve("unsup-metafiles.zip.br")).stream());
+							try (var in = new BrotliInputStream(HTTP.get(src.resolve("unsup-metafiles.zip.br")).stream());
 									var out = new FileOutputStream(outf)) {
 								Util.copy(in, out);
 							} catch (IOException e) {
@@ -360,7 +360,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 									var ze = metafilesZip.getEntry(path);
 									if (ze != null) {
 										try (var in = metafilesZip.getInputStream(ze)) {
-											var dataOpt = RequestHelper.collectLimited(in, 8*K);
+											var dataOpt = HTTP.collectLimited(in, 8*K);
 											if (!dataOpt.isPresent()) throw new IOException("Size limit of 8K for "+path+" exceeded");
 											var data = dataOpt.get();
 											String computedHash = func.getHasher().hash(data).toHexLower();
@@ -380,7 +380,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 									Log.warn("Failed to retrieve "+path+" from metafiles zip, falling back to downloading the individual file", t);
 								}
 							}
-							return new Metafile(name, path, hash, RequestHelper.loadToml(src.resolve(Util.uriOfPath(path)), 8*K, func, hash));
+							return new Metafile(name, path, hash, HTTP.loadToml(src.resolve(Util.uriOfPath(path)), 8*K, func, hash));
 						}));
 					} else {
 						String alias = file.getString("alias", path);
