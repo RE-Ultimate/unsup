@@ -72,5 +72,10 @@
     "subtitle.downloading.1.elided": {
         "one": "{{.filename_1}} en {{.elided_count}} ander aan het downloaden",
         "other": "{{.filename_1}} en {{.elided_count}} andere aan het downloaden"
-    }
+    },
+    "subtitle.downloading.4.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}}, en {{.elided_count}} ander aan het downloaden",
+        "other": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}}, en {{.elided_count}} andere aan het downloaden"
+    },
+    "subtitle.downloading.more": "{{.first_filename}} en {{.elided_count}} andere aan het downloaden"
 }
