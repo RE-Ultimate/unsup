@@ -27,7 +27,7 @@ As of 1.0, unsup is also capable of updating MultiMC's "components", including u
 You can either point unsup at a [Packwiz](https://packwiz.infra.link/) pack.toml (recommended), or write a native unsup manifest by hand. See [the wiki](https://git.sleeping.town/exa/unsup/wiki/Manifest-format) for info on the native manifest format. The Creator GUI is on hold, as Packwiz has become a de-facto standard for Minecraft modpacks.
 
 ## Stability
-unsup has been used for modpacks on versions from 1.4.7 to 1.20.2, both client and server, and is known to work with Forge (both legacy and modern), Fabric, Quilt, and NeoForge. It has successfully powered many modpacks, from [small](https://git.sleeping.town/Rewind/Upsilon) to [large](https://github.com/ModFest/bc23-pack). Native manifest and Packwiz manifest support are both quite stable, and have been used extensively.
+unsup has been used for Minecraft modpacks on versions from Beta 1.7.3 to 26.1, both client and server, and is known to work with Forge (both legacy and modern), Fabric, Quilt, and NeoForge. It has successfully powered many modpacks, from [small](https://git.sleeping.town/Rewind/Upsilon) to [large](https://github.com/ModFest/bc23-pack). Native manifest and Packwiz manifest support are both quite stable, and have been used extensively.
 
 Signing support is still somewhat experimental, and has not been deployed by anyone at large scale. That someone could be you — please let us know if it works well!
 
