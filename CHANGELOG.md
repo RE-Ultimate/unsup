@@ -12,3 +12,4 @@
 * Retry downloading puppet assets from exa.y2k.diy (a non-CDN domain) to possibly make it work in China
   * They seem to aggressively block any and all CDN hosts, but our normal server is fine
 * Reintroduced authorizer support
+* Throbber now spins clockwise, as it was always intended to
