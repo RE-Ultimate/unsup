@@ -72,7 +72,6 @@ public class GLThrobber {
 			drawCircle(x, y, dia-8);
 			glPushMatrix();
 				glTranslatef(x, y, 0);
-				glScalef(-1, 1, 1);
 				glRotatef(from, 0, 0, 1);
 				drawCircleArc(0, 0, dia+2, 0, Math.toRadians(length));
 			glPopMatrix();

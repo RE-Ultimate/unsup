@@ -85,7 +85,7 @@ public class JThrobber extends JComponent {
 			
 			g2d.setStroke(new BasicStroke(4));
 			g2d.setColor(getForeground());
-			g2d.drawArc(((getWidth()-dia)/2)+2, ((getHeight()-dia)/2)+2, dia-4, dia-4, (int)from, (int)length);
+			g2d.drawArc(((getWidth()-dia)/2)+2, ((getHeight()-dia)/2)+2, dia-4, dia-4, (int)(360-from), (int)-length);
 		}
 		if (isDisplayable()) {
 			if (delayNs == 0) {
