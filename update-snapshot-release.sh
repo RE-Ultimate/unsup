@@ -38,10 +38,6 @@ curl -s -X DELETE -H "$auth" $apibase/releases/tags/$tag  >/dev/null && echo 'OK
 echo -n 'Delete snapshot tag... '
 curl -s -X DELETE -H "$auth" $apibase/tags/$tag >/dev/null && echo 'OK' || echo 'Error, ignoring'
 
-echo -n 'Get last tag... '
-lasttag=$(curl -s "$apibase/releases?draft=false&page=1&limit=1" |jq -r '.[0].tag_name')
-echo 'OK'
-
 echo -n 'Create release... '
 resp=$(curl --fail-with-body -s -X POST -H 'Content-Type: application/json' -H "$auth" $apibase/releases --data-raw "$(jq --raw-input --slurp --arg latest $latest --arg commit ${CI_COMMIT_SHA-trunk} --arg tag $tag '
 {
@@ -68,8 +64,8 @@ echo 'Sig attach response:'
 curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=unsup-$latestu.jar.sig" \
 	-F "attachment=@build/libs/unsup-$latest.jar.sig" |jq .
 echo 'Component attach response:'
-curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=diy.y2k.unsup.json" \
-	-F "attachment=@build/libs/diy.y2k.unsup.json" |jq .
+curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=com.unascribed.unsup.json" \
+	-F "attachment=@build/libs/com.unascribed.unsup.json" |jq .
 
 echo 'Undraft response:'
 curl --fail-with-body -s -X PATCH -H 'Content-Type: application/json' -H "$auth" "$apibase/releases/$relid" \
