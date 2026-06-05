@@ -391,10 +391,9 @@ tasks.named("dependencyUpdates").configure {
 
 def pgLibJars = files(
 	System.properties["java.home"]+"/jmods/java.base.jmod", // everyone needs java base
-	System.properties["java.home"]+"/jmods/java.desktop.jmod", // used by the puppet
-	System.properties["java.home"]+"/jmods/java.management.jmod", // for the agent
-	System.properties["java.home"]+"/jmods/java.xml.jmod", // html renderer in the opengl puppet
-	System.properties["java.home"]+"/jmods/java.logging.jmod", // used by okhttp
+	System.properties["java.home"]+"/jmods/java.desktop.jmod", // swing puppet
+	System.properties["java.home"]+"/jmods/java.management.jmod", // agent
+	System.properties["java.home"]+"/jmods/java.xml.jmod", // opengl puppet html
 )
 
 task proguard(type: proguard.gradle.ProGuardTask) {
@@ -413,6 +412,7 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 	keep 'class diy.y2k.unsup.puppet.Puppet { *; }'
 	keep 'class diy.y2k.unsup.LibBootstrap* { *; }'
 	keep 'class com.unascribed.sup.Unsup { *; }'
+	keep 'class diy.y2k.unsup.LangPrinter { *; }'
 	
 	keepclassmembers 'enum * { public static **[] values(); public static ** valueOf(java.lang.String); }'
 	keepclassmembernames 'class * { *; }'
