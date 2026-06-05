@@ -24,10 +24,7 @@ jq() {
 
 ./.ci/brotli -d .ci/jq.br
 
-tag=SNAPSHOT
-if [[ -n "$CI_COMMIT_BRANCH" && "$CI_COMMIT_BRANCH" != "trunk" ]]; then
-	tag=$tag-$CI_COMMIT_BRANCH
-fi
+tag=SNAPSHOT-1.2
 
 latest=$(cat ci-version.txt)
 latestu=$(echo "$latest" | sed 's/+/%2B/g')
