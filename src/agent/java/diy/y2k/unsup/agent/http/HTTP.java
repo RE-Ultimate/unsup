@@ -313,7 +313,7 @@ public class HTTP {
 		return withRetries(10, () -> {
 			try {
 				InputStream conn = get(url, false, 0, sendLimitToServer ? sizeLimit-1 : 0).stream();
-				var resp = HTTP.collectLimited(conn, sizeLimit);
+				var resp = collectLimited(conn, sizeLimit);
 				if (resp.isPresent()) return resp.get();
 				throw new IOException("Received more than "+sizeLimit+" bytes from server");
 			} catch (SocketTimeoutException e) {
@@ -407,7 +407,7 @@ public class HTTP {
 			}
 		}
 		final boolean fhostile = hostile;
-		return HTTP.withRetries(10, () -> {
+		return withRetries(10, () -> {
 			try {
 				HttpRequest.Builder reqbldr = HttpRequest.newBuilder(url)
 						.header("User-Agent",
@@ -466,7 +466,7 @@ public class HTTP {
 							.definedDelay(delay);
 					}
 					if (res.statusCode() == 404 || res.statusCode() == 410) throw new FileNotFoundException(url.toString());
-					String s = HTTP.collectLimited(decompress(res), 512)
+					String s = collectLimited(decompress(res), 512)
 							.map(b -> new String(b, StandardCharsets.UTF_8))
 							.orElse("(response too long)");
 					if (res.statusCode()/100 == 500) {

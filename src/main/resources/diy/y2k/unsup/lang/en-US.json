@@ -48,7 +48,6 @@
 		"one": "Downloading {{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}}, and {{.elided_count}} other",
 		"other": "Downloading {{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}}, and {{.elided_count}} others"
 	},
-	"subtitle.downloading.more": "Downloading {{.first_filename}} and {{.elided_count}} more",
 	
 	"subtitle.packwiz.retrieving": "Retrieving metafiles",
 	
