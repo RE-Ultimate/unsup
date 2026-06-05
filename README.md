@@ -34,7 +34,7 @@ Signing support is still somewhat experimental, and has not been deployed by any
 ## GUI
 unsup has a minimal and elegant GUI that works everywhere (yes, including macOS) and can have all of its colors customized to make it fit in with your branding. It ships with a dark theme with minty accents.
 
-<img width="492" src="img/bootstrapping.png"/><br/>
+<img width="492" src="img/bootstrapping.svg"/><br/>
 <img width="588" src="img/conflict.png"/><br/>
 <img width="353" src="img/update.png"/><br/>
 <img width="612" src="img/flavors.png"/><br/>
