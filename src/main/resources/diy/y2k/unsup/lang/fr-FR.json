@@ -56,5 +56,33 @@
     "dialog.busy.title": "unsup est occupé",
     "dialog.busy.title.branded": "{{.brand}} Updater est occupé",
     "dialog.busy": "L'updater est occupé et ne peut pas se fermer maintenant.\nVeuillez attendre un moment.",
-    "subtitle.downloading.1": "Téléchargent {{.filename_1}}"
+    "subtitle.downloading.1": "Téléchargent {{.filename_1}}",
+    "subtitle.downloading.0.elided": {
+        "one": "Téléchargent {{.elided_count}} fichier",
+        "many": "Téléchargent {{.elided_count}} fichiers",
+        "other": "Téléchargent {{.elided_count}} fichiers"
+    },
+    "subtitle.downloading.1.elided": {
+        "one": "Téléchargent {{.filename_1}} et {{.elided_count}} autre",
+        "many": "Téléchargent {{.filename_1}} et {{.elided_count}} autres",
+        "other": "Téléchargent {{.filename_1}} et {{.elided_count}} autres"
+    },
+    "subtitle.downloading.2.elided": {
+        "one": "Téléchargent {{.filename_1}}, {{.filename_2}} et {{.elided_count}} autre",
+        "many": "Téléchargent {{.filename_1}}, {{.filename_2}} et {{.elided_count}} autres",
+        "other": "Téléchargent {{.filename_1}}, {{.filename_2}} et {{.elided_count}} autres"
+    },
+    "subtitle.downloading.3.elided": {
+        "one": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}} et {{.elided_count}} autre",
+        "many": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}} et {{.elided_count}} autres",
+        "other": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}} et {{.elided_count}} autres"
+    },
+    "subtitle.downloading.2": "Téléchargent {{.filename_1}} et {{.filename_2}}",
+    "subtitle.downloading.3": "Téléchargent {{.filename_1}}, {{.filename_2}} et {{.filename_3}}",
+    "subtitle.downloading.4": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}} et {{.filename_4}}",
+    "subtitle.downloading.4.elided": {
+        "one": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} et {{.elided_count}} autre",
+        "many": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} et {{.elided_count}} autres",
+        "other": "Téléchargent {{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} et {{.elided_count}} autres"
+    }
 }
