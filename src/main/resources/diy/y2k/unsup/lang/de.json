@@ -55,5 +55,29 @@
     "dialog.conflict.revised.local_deleted_remote_changed.option.no": "Löschen",
     "dialog.update.title": "Update verfügbar",
     "dialog.busy.title.branded": "{{.brand}} Updater ist beschäftigt",
-    "dialog.busy": "Der Updater ist beschäftigt und kann nicht beendet werden.\nBitte warte einen Moment."
+    "dialog.busy": "Der Updater ist beschäftigt und kann nicht beendet werden.\nBitte warte einen Moment.",
+    "subtitle.downloading.0.elided": {
+        "one": "{{.elided_count}} Datei wird heruntergeladen",
+        "other": "{{.elided_count}} Dateien werden heruntergeladen"
+    },
+    "subtitle.downloading.1.elided": {
+        "one": "{{.filename_1}} und {{.elided_count}} weiteres werden heruntergeladen",
+        "other": "{{.filename_1}} und {{.elided_count}} weitere werden heruntergeladen"
+    },
+    "subtitle.downloading.1": "{{.filename_1}} wird heruntergeladen",
+    "subtitle.downloading.2": "{{.filename_1}}, und {{.filename_2}} werden heruntergeladen",
+    "subtitle.downloading.3": "{{.filename_1}}, {{.filename_2}}, und {{.filename_3}} werden heruntergeladen",
+    "subtitle.downloading.4": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} und {{.filename_4}} werden heruntergeladen",
+    "subtitle.downloading.3.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} und {{.elided_count}} weiteres werden heruntergeladen",
+        "other": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} und {{.elided_count}} weitere werden heruntergeladen"
+    },
+    "subtitle.downloading.4.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} und {{.elided_count}} weitere werden heruntergeladen",
+        "other": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} und {{.elided_count}} weitere werden heruntergeladen"
+    },
+    "subtitle.downloading.2.elided": {
+        "one": "{{.filename_1}}, {{.filename_2}} und {{.elided_count}} weiteres werden heruntergeladen",
+        "other": "{{.filename_1}}, {{.filename_2}} und {{.elided_count}} weitere werden heruntergeladen"
+    }
 }
