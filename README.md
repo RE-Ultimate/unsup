@@ -1,4 +1,4 @@
-[![Translation status](https://weblate.sleeping.town/widgets/unascribed/-/unsup/multi-auto.svg)](https://weblate.sleeping.town/engage/unascribed/?component=unsup)
+[![Translation status](https://weblate.sleeping.town/widgets/unascribed/-/unsup/multi-auto.svg)](https://weblate.sleeping.town/projects/unascribed/unsup/)
 
 <img src="unsup.svg" align="right" width="180px">
 
