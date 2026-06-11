@@ -251,6 +251,7 @@ public record Config(
 		for (var kobj : System.getProperties().keySet()) {
 			if (kobj instanceof String k && k.startsWith("unsup.flavor.")) {
 				var v = System.getProperty(k);
+				k = k.substring(13);
 				Log.debug("Applying flavor choice "+k+"="+v+" from sysprops");
 				defaultFlavors.put(k, v);
 			}
