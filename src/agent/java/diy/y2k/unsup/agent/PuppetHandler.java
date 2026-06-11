@@ -496,30 +496,32 @@ public class PuppetHandler {
 		for (var en : Agent.config().colorChoices().entrySet()) {
 			tellPuppet(":color="+en.getKey().name()+":"+en.getValue());
 		}
-		var langOut = new HashMap<String, String>();
-		langOut.putAll(loadLang("en-US"));
-		Function<String, String> pseudolocale = null;
-		switch (lang) {
-			case "en-US" -> {}
-			case "en-XA" -> pseudolocale = AccentedEnglish::toEnXA;
-			case "en-PIG" -> pseudolocale = PigLatin::toPigLatin;
-			default -> langOut.putAll(loadLang(lang));
-		}
-		if (pseudolocale != null) {
-			for (var en : langOut.entrySet()) {
-				String[] spl = en.getValue().split(":");
-				var sj = new StringJoiner(":");
-				for (var v : spl) {
-					sj.add(pseudolocale.apply(v));
-				}
-				en.setValue(sj.toString());
+		if (lang != null) {
+			var langOut = new HashMap<String, String>();
+			langOut.putAll(loadLang("en-US"));
+			Function<String, String> pseudolocale = null;
+			switch (lang) {
+				case "en-US" -> {}
+				case "en-XA" -> pseudolocale = AccentedEnglish::toEnXA;
+				case "en-PIG" -> pseudolocale = PigLatin::toPigLatin;
+				default -> langOut.putAll(loadLang(lang));
 			}
-		}
-		for (var en : Agent.config().strings().entrySet()) {
-			langOut.put(en.getKey(), ":::::"+en.getValue().replace(":", "\r"));
-		}
-		for (var en : langOut.entrySet()) {
-			tellPuppet(":string="+en.getKey()+":"+en.getValue());
+			if (pseudolocale != null) {
+				for (var en : langOut.entrySet()) {
+					String[] spl = en.getValue().split(":");
+					var sj = new StringJoiner(":");
+					for (var v : spl) {
+						sj.add(pseudolocale.apply(v));
+					}
+					en.setValue(sj.toString());
+				}
+			}
+			for (var en : Agent.config().strings().entrySet()) {
+				langOut.put(en.getKey(), ":::::"+en.getValue().replace(":", "\r"));
+			}
+			for (var en : langOut.entrySet()) {
+				tellPuppet(":string="+en.getKey()+":"+en.getValue());
+			}
 		}
 		Agent.config().modpackName().ifPresent(name -> {
 			tellPuppet(":modpackName="+name);
