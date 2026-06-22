@@ -55,5 +55,14 @@
     "flavor.default_description": "설명 없음",
     "dialog.progress.title.branded": "{{.brand}} 업데이터 (unsup v{{.version}} 기반)",
     "dialog.busy.title.branded": "{{.brand}} 업데이터가 바쁨",
-    "dialog.progress.title": "unsup v{{.version}}"
+    "dialog.progress.title": "unsup v{{.version}}",
+    "subtitle.downloading.0.elided": "파일 {{.elided_count}}개 다운로드 중",
+    "subtitle.downloading.1": "{{.filename_1}} 다운로드 중",
+    "subtitle.downloading.2": "{{.filename_1}} 및 {{.filename_2}} 다운로드 중",
+    "subtitle.downloading.2.elided": "{{.filename_1}}, {{.filename_2}} 외 {{.elided_count}}개 다운로드 중",
+    "subtitle.downloading.1.elided": "{{.filename_1}} 외 {{.elided_count}}개 다운로드 중",
+    "subtitle.downloading.3": "{{.filename_1}}, {{.filename_2}} 및 {{.filename_3}} 다운로드 중",
+    "subtitle.downloading.3.elided": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} 외 {{.elided_count}}개 다운로드 중",
+    "subtitle.downloading.4": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}} 및 {{.filename_4}} 다운로드 중",
+    "subtitle.downloading.4.elided": "{{.filename_1}}, {{.filename_2}}, {{.filename_3}}, {{.filename_4}} 외 {{.elided_count}}개 다운로드 중"
 }
