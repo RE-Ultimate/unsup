@@ -95,6 +95,7 @@ import diy.y2k.unsup.agent.ExitCode;
 import diy.y2k.unsup.agent.Log;
 import diy.y2k.unsup.agent.auth.Authorizer.AuthorizerSpec;
 import diy.y2k.unsup.agent.data.HashFunction;
+import diy.y2k.unsup.agent.http.HTTP.ResourceRef.Kind;
 import diy.y2k.unsup.agent.signing.SigProvider;
 import diy.y2k.unsup.agent.util.CorruptionHelper;
 import diy.y2k.unsup.agent.util.CorruptionHelper.CorruptionType;
@@ -116,6 +117,12 @@ public class HTTP {
 	public static final int K = 1024;
 	public static final int M = K*1024;
 	
+	/**
+	 * When true, retry on initial connection failures rather than giving up.
+	 * <p>
+	 * Enabled after initial manifest retrieval is complete, so that an offline internet connection
+	 * can fail somewhat gracefully.
+	 */
 	public static volatile boolean TENACIOUS_MODE = false;
 	
 	public static final long ONE_SECOND_IN_NANOS = TimeUnit.SECONDS.toNanos(1);
@@ -333,11 +340,29 @@ public class HTTP {
 	private static final Slice LFS_HEADER = Slice.fromString("version https://git-lfs.github.com/spec/v1", StandardCharsets.UTF_8);
 	
 	@Desugar
-	public record ResourceRef(InputStream stream, OptionalLong size, boolean supportsRange) implements Closeable {
+	public record ResourceRef(InputStream stream, OptionalLong size, Kind kind) implements Closeable {
 		
-		public ResourceRef(InputStream stream, boolean supportsRange) { this(stream, OptionalLong.empty(), supportsRange); }
+		public enum Kind {
+			UNCOMPRESSED_WITH_RANGE,
+			UNCOMPRESSED,
+			COMPRESSED,
+			;
+			public boolean supportsRange() {
+				return this == UNCOMPRESSED_WITH_RANGE;
+			}
+			public boolean compressed() {
+				return this == COMPRESSED;
+			}
+			public static Kind compose(boolean supportsRange, boolean compressed) {
+				if (compressed) return COMPRESSED;
+				if (supportsRange) return UNCOMPRESSED_WITH_RANGE;
+				return UNCOMPRESSED;
+			}
+		}
 		
-		public ResourceRef(InputStream stream, long size, boolean supportsRange) { this(stream, OptionalLong.of(size), supportsRange); }
+		public ResourceRef(InputStream stream, Kind kind) { this(stream, OptionalLong.empty(), kind); }
+		
+		public ResourceRef(InputStream stream, long size, Kind kind) { this(stream, OptionalLong.of(size), kind); }
 		
 		@Override
 		public void close() throws IOException { stream.close(); }
@@ -365,7 +390,7 @@ public class HTTP {
 			var fis = new FileInputStream(f);
 			var ch = fis.getChannel();
 			ch.position(startAt);
-			return new ResourceRef(fis, ch.size()-startAt, true);
+			return new ResourceRef(fis, ch.size()-startAt, Kind.UNCOMPRESSED_WITH_RANGE);
 		}
 		if (Agent.config().autofix() && "github.com".equals(url.getHost())) {
 			var m = RAW_GITHUB.matcher(url.getPath());
@@ -431,7 +456,10 @@ public class HTTP {
 					reqbldr.header("Sec-Fetch-User", "?1");
 					reqbldr.header("Priority", "u=0, i");
 					reqbldr.header("TE", "trailers");
-				} else if (endAt != 0) {
+				} else if (endAt != 0
+						// request no compression for likely large files so we can do range-based download resumption.
+						// also, these are already compressed anyway.
+						|| url.getPath().endsWith(".jar") || url.getPath().endsWith(".zip")) {
 					reqbldr.header("Accept-Encoding", "identity");
 				} else {
 					reqbldr.header("Accept-Encoding", "gzip, deflate, br");
@@ -466,7 +494,7 @@ public class HTTP {
 							.definedDelay(delay);
 					}
 					if (res.statusCode() == 404 || res.statusCode() == 410) throw new FileNotFoundException(url.toString());
-					String s = collectLimited(decompress(res), 512)
+					String s = collectLimited(decompress(res).orElseGet(res::body), 512)
 							.map(b -> new String(b, StandardCharsets.UTF_8))
 							.orElse("(response too long)");
 					if (res.statusCode()/100 == 500) {
@@ -481,7 +509,8 @@ public class HTTP {
 				var len = res.headers().firstValueAsLong("Content-Length");
 				boolean supportsRange = "identity".equals(res.headers().firstValue("Content-Encoding").orElse("identity"))
 						&& "bytes".equals(res.headers().firstValue("Accept-Ranges").orElse(""));
-				return new ResourceRef(decompress(res), len, supportsRange);
+				var decomp = decompress(res);
+				return new ResourceRef(decomp.orElseGet(res::body), len, Kind.compose(supportsRange, decomp.isPresent()));
 			} catch (InterruptedIOException e) {
 				throw new Retry("Connection to "+url.getHost()+" timed out",
 						e);
@@ -529,14 +558,15 @@ public class HTTP {
 		});
 	}
 	
-	private static @NotNull InputStream decompress(HttpResponse<InputStream> res) throws IOException {
-		return switch (res.headers().firstValue("Content-Encoding").orElse("identity")) {
-			case "", "identity" -> res.body();
-			case "deflate" -> new InflaterInputStream(res.body());
-			case "gzip" -> new GZIPInputStream(res.body());
-			case "br" -> new BrotliInputStream(res.body());
+	private static Optional<InputStream> decompress(HttpResponse<InputStream> res) throws IOException {
+		var ce = res.headers().firstValue("Content-Encoding").orElse("identity");
+		return switch (ce) {
+			case "", "identity" -> Optional.empty();
+			case "deflate" -> Optional.of(new InflaterInputStream(res.body()));
+			case "gzip" -> Optional.of(new GZIPInputStream(res.body()));
+			case "br" -> Optional.of(new BrotliInputStream(res.body()));
 			case "zstd" -> throw new IllegalArgumentException("We lied about supporting zstd to look like a browser, and the remote host called our bluff!");
-			default -> throw new IllegalArgumentException("Unknown Content-Encoding");
+			default -> throw new IllegalArgumentException("Unknown Content-Encoding: "+ce);
 		};
 	}
 
@@ -656,11 +686,11 @@ public class HTTP {
 				var ref = get(url, hostile);
 				try {
 					var in = ref.stream();
-					actualSize = ref.size();
+					actualSize = ref.kind().compressed() ? OptionalLong.empty() : ref.size();
 					if (actualSize.isPresent() && size != -1 && actualSize.getAsLong() != size) {
 						throw new IOException("Expected "+size+" bytes, but got "+actualSize.getAsLong());
 					}
-					boolean canUseRange = ref.supportsRange();
+					boolean canUseRange = ref.kind().supportsRange();
 					byte[] buf = new byte[16384];
 					try (OutputStream out = file == null ? NullOutputStream.INSTANCE : new FileOutputStream(file)) {
 						while (true) {

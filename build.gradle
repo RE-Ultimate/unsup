@@ -94,7 +94,6 @@ license {
 			files.from('unsup.svg')
 			files.from('unsup-lowres.svg')
 			files.from('update-snapshot-release.sh')
-			files.from('gradle/verification-metadata.xml')
 		}
 		buildSrc {
 			files.from('buildSrc/src')
@@ -132,10 +131,6 @@ task computeFileDates {
 			includeEmptyDirs false
 			
 			def uncreditedAuthors = [
-				// due to Weblate squash commits addon, which i have since uninstalled
-				// this can get removed once all the translations get updated
-				'src/main/resources/diy/y2k/unsup/presets/lang/nb-NO.ini': ['Artemis'],
-				'src/main/resources/diy/y2k/unsup/presets/lang/tok.ini': ['Jo Null'],
 			]
 			
 			def unrecognizedRenames = [
