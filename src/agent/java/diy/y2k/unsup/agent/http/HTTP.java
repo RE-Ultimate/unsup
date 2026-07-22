@@ -120,8 +120,8 @@ public class HTTP {
 	/**
 	 * When true, retry on initial connection failures rather than giving up.
 	 * <p>
-	 * Enabled after initial manifest retrieval is complete, so that an offline internet connection
-	 * can fail somewhat gracefully.
+	 * Disabled during initial manifest retrieval, so that an offline internet connection can fail
+	 * somewhat gracefully.
 	 */
 	public static volatile boolean TENACIOUS_MODE = false;
 	

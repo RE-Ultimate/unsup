@@ -64,8 +64,8 @@ echo 'Sig attach response:'
 curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=unsup-$latestu.jar.sig" \
 	-F "attachment=@build/libs/unsup-$latest.jar.sig" |jq .
 echo 'Component attach response:'
-curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=com.unascribed.unsup.json" \
-	-F "attachment=@build/libs/com.unascribed.unsup.json" |jq .
+curl --fail-with-body -s -X POST -H "$auth" "$apibase/releases/$relid/assets?name=diy.y2k.unsup.json" \
+	-F "attachment=@build/libs/diy.y2k.unsup.json" |jq .
 
 echo 'Undraft response:'
 curl --fail-with-body -s -X PATCH -H 'Content-Type: application/json' -H "$auth" "$apibase/releases/$relid" \
