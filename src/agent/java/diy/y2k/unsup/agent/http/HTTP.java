@@ -704,6 +704,7 @@ public class HTTP {
 									try { ref.close(); } catch (Throwable t) {}
 									try {
 										ref = get(url, hostile, readTotal);
+										in = ref.stream();
 									} catch (Throwable t) {
 										t.addSuppressed(e);
 										throw t;
