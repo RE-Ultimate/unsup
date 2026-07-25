@@ -1,3 +1,1 @@
-* Throbber now spins clockwise, as it was always intended to
-* Fixed optimized metafiles not downloading the first time
-* Fixed flavor sysprops not working
+* Fixed range retries not actually working at all
