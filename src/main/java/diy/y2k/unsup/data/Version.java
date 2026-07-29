@@ -22,8 +22,10 @@ package diy.y2k.unsup.data;
 import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
 
+import diy.y2k.unsup.ann.Nullable;
+
 @Desugar
-public record Version(String name, int code) {
+public record Version(@Nullable String name, int code) {
 
 	public JsonObject toJson() {
 		var obj = new JsonObject();
