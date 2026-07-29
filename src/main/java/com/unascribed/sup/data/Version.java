@@ -21,9 +21,10 @@ package com.unascribed.sup.data;
 
 import com.github.bsideup.jabel.Desugar;
 import com.grack.nanojson.JsonObject;
+import com.unascribed.sup.ann.Nullable;
 
 @Desugar
-public record Version(String name, int code) {
+public record Version(@Nullable String name, int code) {
 
 	public JsonObject toJson() {
 		var obj = new JsonObject();

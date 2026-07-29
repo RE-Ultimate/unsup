@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -143,7 +144,7 @@ public class PackwizHandler extends AbstractFormatHandler {
 					Log.info("Update available - only components have changed");
 				}
 				String body = "dialog.update.named¤"+ ourVersion.name() +"¤"+ theirVersion.name();
-				if (ourVersion.name().equals(theirVersion.name())) {
+				if (Objects.equals(ourVersion.name(), theirVersion.name())) {
 					body = "dialog.update.unnamed";
 				}
 				boolean bootstrapping = !pwstate.containsKey("lastIndexHash");
