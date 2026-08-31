@@ -55,5 +55,14 @@
     "dialog.component_update.title.branded": "{{.brand}} 更新器提示信息",
     "dialog.flavors.title": "选择配置变体",
     "dialog.component_update": "更新器应用了一项组件更新。\n必须重新启动游戏。尽管启动器可能提示有错误，实际上没有发生任何错误，只需重新启动游戏即可。",
-    "dialog.progress.title.branded": "{{.brand}} 更新器（由 unsup v{{.version}} 提供支持）"
+    "dialog.progress.title.branded": "{{.brand}} 更新器（由 unsup v{{.version}} 提供支持）",
+    "subtitle.downloading.2": "正在下载 {{.filename_1}} 和 {{.filename_2}}",
+    "subtitle.downloading.2.elided": "正在下载 {{.filename_1}} {{.filename_2}} 和其他 {{.elided_count}} 个文件",
+    "subtitle.downloading.0.elided": "下载 {{.elided_count}} 个文件中",
+    "subtitle.downloading.1": "正在下载 {{.filename_1}}",
+    "subtitle.downloading.1.elided": "正在下载 {{.filename_1}} 和其他 {{.elided_count}} 个文件",
+    "subtitle.downloading.3": "正在下载 {{.filename_1}} 、 {{.filename_2}} 和 {{.filename_3}}",
+    "subtitle.downloading.3.elided": "正在下载 {{.filename_1}} 、 {{.filename_2}} 、 {{.filename_3}} 和其他 {{.elided_count}} 个文件",
+    "subtitle.downloading.4": "正在下载 {{.filename_1}} 、 {{.filename_2}} 、 {{.filename_3}} 和 {{.filename_4}}",
+    "subtitle.downloading.4.elided": "正在下载 {{.filename_1}}、{{.filename_2}}、{{.filename_3}}、{{.filename_4}} 和其他 {{.elided_count}} 个文件"
 }
