@@ -71,8 +71,8 @@ import com.unascribed.sup.pieces.ExceptableRunnable;
 import com.unascribed.sup.util.Multimap;
 import com.unascribed.sup.util.Resources;
 
-import com.playsawdust.chipper.toolbox.Stopwatch;
-import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
+import diy.y2k.stator.Stopwatch;
+import diy.y2k.stator.io.hash.StandardHashers;
 
 import okhttp3.OkHttpClient;
 import okhttp3.brotli.BrotliInterceptor;

@@ -18,7 +18,7 @@ import javax.crypto.spec.SecretKeySpec;
 import com.github.bsideup.jabel.Desugar;
 import com.unascribed.sup.util.Bases;
 
-import com.playsawdust.chipper.toolbox.io.hash.StandardHashers;
+import diy.y2k.stator.io.hash.StandardHashers;
 
 import okhttp3.Request;
 

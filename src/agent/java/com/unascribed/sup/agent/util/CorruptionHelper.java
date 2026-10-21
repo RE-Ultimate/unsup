@@ -57,15 +57,15 @@ public class CorruptionHelper {
 		while (true) {
 			int b = src.read();
 			if (b == -1) break;
-			raw.contribute((byte)b);
+			raw.putByte((byte)b);
 			if (b == '\r') continue;
 			if (b == '\n') {
-				dos.contribute((byte)'\r');
-				dos.contribute((byte)'\n');
-				unix.contribute((byte)'\n');
+				dos.putByte((byte)'\r');
+				dos.putByte((byte)'\n');
+				unix.putByte((byte)'\n');
 			} else {
-				dos.contribute((byte)b);
-				unix.contribute((byte)b);
+				dos.putByte((byte)b);
+				unix.putByte((byte)b);
 			}
 		}
 		String dosHash = dos.finish().toHexLower();

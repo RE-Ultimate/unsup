@@ -516,7 +516,7 @@ public class RequestHelper {
 							if (actualSize.isPresent() && readTotal > actualSize.getAsLong())
 								throw new IOException("Overread; was told to expect "+actualSize.getAsLong()+" bytes, but got at least "+readTotal);
 							out.write(buf, 0, read);
-							if (digest != null) digest.contribute(buf, 0, read);
+							if (digest != null) digest.putBytes(buf, 0, read);
 							if (progressCb != null && System.nanoTime()-lastProgressUpdate > ONE_SECOND_IN_NANOS/90) {
 								lastProgressUpdate = System.nanoTime();
 								progressCb.updateProgress(Progressor.State.DOWNLOADING, readTotal, actualSize);
@@ -556,7 +556,7 @@ public class RequestHelper {
 			while (true) {
 				int read = in.read(buf);
 				if (read == -1) break;
-				digest.contribute(buf, 0, read);
+				digest.putBytes(buf, 0, read);
 			}
 		}
 		return digest.finish().toHexLower();
