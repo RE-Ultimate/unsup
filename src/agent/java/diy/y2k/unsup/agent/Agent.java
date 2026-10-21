@@ -189,7 +189,7 @@ public class Agent {
 			} else {
 				Log.info("All done, handing over control.");
 				// poke the Unsup class so it loads and finalizes all of its values
-				if (Unsup.SOURCE_VERSION != null) Unsup.poke();
+				Unsup.poke();
 				String cmd = System.getProperty("sun.java.command");
 				if ("org.multimc.EntryPoint".equals(cmd)) {
 					// we actually run before MultiMC's Java-side launcher code, so print a

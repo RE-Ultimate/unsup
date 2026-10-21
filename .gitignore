@@ -13,3 +13,6 @@ out
 .unsup-tmp
 /ci-version.txt
 /.apt_generated/
+cacert.etag
+cacert.pem
+tools/*.class

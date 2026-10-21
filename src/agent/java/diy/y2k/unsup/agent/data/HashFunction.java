@@ -21,6 +21,8 @@ package diy.y2k.unsup.agent.data;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 import diy.y2k.stator.io.Hasher;
 import diy.y2k.stator.io.hash.StandardHashers;
@@ -28,16 +30,25 @@ import diy.y2k.unsup.agent.Agent;
 import diy.y2k.unsup.agent.Log;
 import diy.y2k.unsup.agent.pieces.Murmur2CFHasher;
 
-public enum HashFunction {
-	MD5("MD5", StandardHashers.md5(), 128, true),
-	SHA1("SHA-1", StandardHashers.sha1(), 160, true),
-	SHA2_256("SHA-2 256", StandardHashers.sha2_256(), 256, false),
-	SHA2_384("SHA-2 384", StandardHashers.sha2_384(), 384, false),
-	SHA2_512("SHA-2 512", StandardHashers.sha2_512(), 512, false),
-	SHA2_512_256("SHA-2 512/256", StandardHashers.sha2_512_256(), 256, false),
+import static diy.y2k.unsup.agent.data.HashFunction.Quirk.*;
 
-	MURMUR2_CF("Murmur2-CF", new Murmur2CFHasher(), 32, true),
+public enum HashFunction {
+	@SuppressWarnings("deprecation")
+	MD5("MD5", StandardHashers::md5, 128, INSECURE),
+	SHA1("SHA-1", StandardHashers::sha1, 160, INSECURE),
+	SHA2_256("SHA-2 256", StandardHashers::sha2_256, 256),
+	SHA2_384("SHA-2 384", StandardHashers::sha2_384, 384),
+	SHA2_512("SHA-2 512", StandardHashers::sha2_512, 512),
+	SHA2_512_256("SHA-2 512/256", StandardHashers::sha2_512_256, 256, LIMITED_AVAILABILITY),
+
+	MURMUR2_CF("Murmur2-CF", Murmur2CFHasher::new, 32, INSECURE, PROPRIETARY),
 	;
+	
+	public enum Quirk {
+		INSECURE,
+		PROPRIETARY,
+		LIMITED_AVAILABILITY
+	}
 	
 	private static final Map<String, HashFunction> BY_NAME = new HashMap<>();
 	
@@ -52,25 +63,35 @@ public enum HashFunction {
 	
 	private boolean hasWarned = false;
 	
-	HashFunction(String name, Hasher hasher, int sizeInBits, boolean insecure) {
+	HashFunction(String name, Supplier<Hasher> hasherSupplier, int sizeInBits, Quirk... quirks) {
 		this.name = name;
-		this.hasher = hasher;
 		this.sizeInBits = sizeInBits;
 		this.sizeInBytes = (sizeInBits+7)/8;
 		this.sizeInHexChars = sizeInBytes()*2;
-		this.insecure = insecure;
+		this.insecure = contains(quirks, INSECURE);
 		boolean unsupported;
 		String emptyHash;
+		Hasher hasher;
 		try {
+			hasher = hasherSupplier.get();
 			emptyHash = hasher.hash().toHexLower();
 			unsupported = false;
-		} catch (UnsupportedOperationException e) {
+		} catch (UnsupportedOperationException | IllegalArgumentException e) {
 			Log.warn("This JRE does not support "+name);
+			hasher = null;
 			emptyHash = "?????";
 			unsupported = true;
 		}
+		this.hasher = hasher;
 		this.emptyHash = emptyHash;
 		this.unsupported = unsupported;
+	}
+	
+	private static <T> boolean contains(T[] arr, T value) {
+		for (var t : arr) {
+			if (Objects.equals(t, value)) return true;
+		}
+		return false;
 	}
 	
 	private UnsupportedOperationException unsupported() {
