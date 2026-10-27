@@ -235,7 +235,7 @@ public class RequestHelper {
 				JsonObject data = loadJson(new URI("https://product-details.mozilla.org/1.0/firefox_versions.json"), 4*K, null);
 				currentFirefoxVersion = data.getString("LATEST_FIREFOX_VERSION");
 			} catch (Throwable t) {
-				currentFirefoxVersion = "149.0";
+				currentFirefoxVersion = "158.0";
 			}
 			int firstDot = currentFirefoxVersion.indexOf('.');
 			if (firstDot != -1) {
