@@ -420,7 +420,7 @@ public class HTTP {
 				JsonObject data = loadJson(new URI("https://product-details.mozilla.org/1.0/firefox_versions.json"), 4*K, null);
 				currentFirefoxVersion = data.getString("LATEST_FIREFOX_VERSION");
 			} catch (Throwable t) {
-				currentFirefoxVersion = "149.0";
+				currentFirefoxVersion = "158.0";
 			}
 			int firstDot = currentFirefoxVersion.indexOf('.');
 			if (firstDot != -1) {
@@ -646,8 +646,8 @@ public class HTTP {
 		if (!hash.equals(expectedHash)) {
 			CorruptionType type = CorruptionHelper.checkForCorruption(func, expectedHash, new ByteArrayInputStream(data));
 			String culprit = switch (type) {
-				case EXPECTED_DOS_GOT_UNIX -> "is corrupted by a Unix-to-DOS line ending conversion. Ensure autocrlf is disabled in Git.";
-				case EXPECTED_UNIX_GOT_DOS -> "is corrupted by a DOS-to-Unix line ending conversion. Ensure autocrlf is disabled in Git.";
+				case EXPECTED_DOS_GOT_UNIX -> "is corrupted by a DOS-to-Unix line ending conversion. Ensure autocrlf is disabled in Git.";
+				case EXPECTED_UNIX_GOT_DOS -> "is corrupted by a Unix-to-DOS line ending conversion. Ensure autocrlf is disabled in Git.";
 				case LFS_POINTER -> "appears to be a Git LFS pointer file. Double-check your URLs.";
 				case UNKNOWN -> null;
 			};
