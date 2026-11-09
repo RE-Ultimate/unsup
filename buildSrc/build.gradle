@@ -3,7 +3,7 @@ plugins {
 }
 
 repositories {
-	maven { url 'https://repo.sleeping.town' }
+	maven { url 'https://raw.githubusercontent.com/RE-Ultimate/maven/main' }
 }
 
 dependencies {

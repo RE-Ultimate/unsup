@@ -20,7 +20,7 @@
 buildscript {
 	repositories {
 		mavenCentral()
-		maven { url 'https://repo.sleeping.town' }
+		maven { url 'https://raw.githubusercontent.com/RE-Ultimate/maven/main' }
 	}
 	dependencies {
 		// just used for shrinking. i've used proguard a lot and trust it
@@ -224,7 +224,7 @@ afterEvaluate {
 
 repositories { 
 	mavenCentral()
-	maven { url 'https://repo.sleeping.town' }
+	maven { url 'https://raw.githubusercontent.com/RE-Ultimate/maven/main' }
 	maven { url 'https://central.sonatype.com/repository/maven-snapshots' }
 	maven { url 'https://maven.is-quite.gay' }
 	exclusiveContent {
